@@ -28,3 +28,34 @@ class SteeringConfig:
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> 'SteeringConfig':
         return cls(**config_dict)
+    
+
+class TrainerConfig:
+    """Configuration for training classifier"""
+
+    def __init__(
+        self,
+        input_dim: int,
+        num_labels: int,
+        hidden_dim: int = 128,
+        linear: bool = False,
+        **kwargs
+    ):
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.num_labels = num_labels
+        self.linear = linear
+        self.extra_config = kwargs
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'input_dim': self.input_dim,
+            'hidden_dim': self.hidden_dim,
+            'num_labels': self.num_labels,
+            'linear': self.linear,
+            **self.extra_config
+        }
+
+    @classmethod
+    def from_dict(cls, config_dict: Dict[str, Any]) -> 'TrainerConfig':
+        return cls(**config_dict)
