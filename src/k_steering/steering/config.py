@@ -39,12 +39,14 @@ class TrainerConfig:
         num_labels: int,
         hidden_dim: int = 128,
         linear: bool = False,
+        lr: float = 1e-3,
         **kwargs
     ):
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.num_labels = num_labels
         self.linear = linear
+        self.lr = lr
         self.extra_config = kwargs
 
     def to_dict(self) -> Dict[str, Any]:
@@ -53,6 +55,7 @@ class TrainerConfig:
             'hidden_dim': self.hidden_dim,
             'num_labels': self.num_labels,
             'linear': self.linear,
+            'lr': self.lr
             **self.extra_config
         }
 

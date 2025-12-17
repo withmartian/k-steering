@@ -23,7 +23,7 @@ class ActivationSteering(ABC, PushToHubMixin):
     - Basic generation interface
 
     Subclasses should implement:
-    - build_classifier()
+    - build_steering_trainer()
     - _apply_steering()
     """
 
@@ -124,7 +124,7 @@ class ActivationSteering(ABC, PushToHubMixin):
     def get_hidden_cache(
         self,
         prompts: List[str],
-        batch_size: int = 8,
+        batch_size: int = 64,
         return_attention_mask: bool = False,
     ) -> Dict[str, torch.Tensor]:
         """
@@ -173,7 +173,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         self,
         layer_idx: int,
         prompts: Optional[List[str]] = None,
-        batch_size: int = 8,
+        batch_size: int = 64,
         use_cached: bool = True,
     ) -> torch.Tensor:
         """
@@ -249,7 +249,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         task: Optional[str] = None,
         dataset: Optional[Any] = None,
         eval_prompts: Optional[List[str]] = None,
-        batch_size: int = 8,
+        batch_size: int = 64,
     ) -> "ActivationSteering":
         """
         Fit the steering model on a task or dataset
@@ -276,6 +276,7 @@ class ActivationSteering(ABC, PushToHubMixin):
 
         # Prepare prompts
         train_prompts = self._get_prompts_from_dataset(self.dataset)
+        self.n_train_prompts = len(train_prompts)
         all_prompts = train_prompts + (self.eval_prompts or [])
 
         # Cache hidden states
