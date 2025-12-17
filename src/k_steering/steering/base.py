@@ -4,13 +4,15 @@ from pathlib import Path
 import json
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers.utils import PushToHubMixin
+from huggingface_hub import cached_file
 import pickle
 
 from src.k_steering.steering.dataset import TaskDataset
 from src.k_steering.steering.config import SteeringConfig, TrainerConfig
 
 
-class ActivationSteering(ABC):
+class ActivationSteering(ABC, PushToHubMixin):
     """
     Base class for activation steering methods
 
@@ -30,7 +32,7 @@ class ActivationSteering(ABC):
         model_name: str,
         steering_config: Optional[SteeringConfig] = None,
         trainer_config: Optional[TrainerConfig] = None,
-        device: Optional[str] = None
+        device: Optional[str] = None,
     ):
         """
         Initialize activation steering base
@@ -60,8 +62,7 @@ class ActivationSteering(ABC):
         self.classifier = None
 
     def _load_hf_model(
-        self,
-        model_name: str
+        self, model_name: str
     ) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
         """
         Load HuggingFace model and tokenizer
@@ -79,7 +80,7 @@ class ActivationSteering(ABC):
             low_cpu_mem_usage=True,
             _attn_implementation="eager",
             output_hidden_states=True,
-            device_map="auto" if self.device == "cuda" else None
+            device_map="auto" if self.device == "cuda" else None,
         )
 
         if tokenizer.pad_token is None:
@@ -104,11 +105,27 @@ class ActivationSteering(ABC):
             "Override this method or provide custom dataset."
         )
 
+    def _extract_labels(self, dataset: Any) -> List[str]:
+        """
+        Extract unique labels from dataset
+
+        Args:
+            dataset: Dataset object
+
+        Returns:
+            List of unique label strings
+        """
+        # Default implementation assumes dataset has 'label' field
+        if hasattr(dataset, "__iter__"):
+            labels = [item.get("label") for item in dataset if "label" in item]
+            return list(set(labels))
+        raise NotImplementedError("Override this method for custom dataset structure")
+
     def get_hidden_cache(
         self,
         prompts: List[str],
         batch_size: int = 8,
-        return_attention_mask: bool = False
+        return_attention_mask: bool = False,
     ) -> Dict[str, torch.Tensor]:
         """
         Get cached hidden states for all prompts
@@ -126,33 +143,27 @@ class ActivationSteering(ABC):
 
         with torch.no_grad():
             for i in range(0, len(prompts), batch_size):
-                batch = prompts[i:i + batch_size]
+                batch = prompts[i : i + batch_size]
                 inputs = self.tokenizer(
-                    batch, 
-                    return_tensors="pt",
-                    padding=True, 
-                    truncation=True
+                    batch, return_tensors="pt", padding=True, truncation=True
                 ).to(self.device)
 
                 if return_attention_mask:
-                    attention_masks.append(inputs['attention_mask'])
+                    attention_masks.append(inputs["attention_mask"])
 
                 outputs = self.model(
-                    **inputs, 
-                    output_hidden_states=True,
-                    return_dict=True
+                    **inputs, output_hidden_states=True, return_dict=True
                 )
 
                 # Cache hidden states from each layer
-                for layer_idx, hidden_state in enumerate(outputs.hidden_states
-                                                         ):
+                for layer_idx, hidden_state in enumerate(outputs.hidden_states):
                     cache[layer_idx].append(hidden_state.cpu())
 
         # Concatenate batches
         cache = {k: torch.cat(v, dim=0) for k, v in cache.items()}
 
         if return_attention_mask:
-            cache['attention_mask'] = torch.cat(attention_masks, dim=0)
+            cache["attention_mask"] = torch.cat(attention_masks, dim=0)
 
         self.cache = cache
 
@@ -174,11 +185,14 @@ class ActivationSteering(ABC):
             Tensor of shape [num_prompts, hidden_dim]
         """
         # Ensure cache exists and contains attention_mask
-        if not (use_cached and self.cache is not None and "attention_mask" in
-                self.cache):
+        if not (
+            use_cached and self.cache is not None and "attention_mask" in self.cache
+        ):
             if prompts is None:
-                raise ValueError("Must provide prompts if cache is not \
-                    available")
+                raise ValueError(
+                    "Must provide prompts if cache is not \
+                    available"
+                )
 
             self.cache = self.get_hidden_cache(
                 prompts,
@@ -193,15 +207,14 @@ class ActivationSteering(ABC):
         lengths = attention_mask.sum(dim=1) - 1
 
         # collect last-token representations
-        vectors = [
-            hidden[i, idx] for i, idx in enumerate(lengths)
-        ]
+        vectors = [hidden[i, idx] for i, idx in enumerate(lengths)]
 
         return torch.stack(vectors, dim=0)
 
     @abstractmethod
-    def build_steering_trainer(self, cache: Dict[str, torch.Tensor],
-                               eval: bool = False):
+    def build_steering_trainer(
+        self, cache: Dict[str, torch.Tensor], eval: bool = False
+    ):
         """
         Build steering classifier/vectors from cached activations
 
@@ -214,4 +227,352 @@ class ActivationSteering(ABC):
         """
         pass
 
+    @abstractmethod
+    def _apply_steering(
+        self, hidden_states: torch.Tensor, layer_idx: int, steering_strength: float
+    ) -> torch.Tensor:
+        """
+        Apply steering to hidden states at a specific layer
+
+        Args:
+            hidden_states: Original hidden states
+            layer_idx: Current layer index
+            steering_strength: Strength of steering
+
+        Returns:
+            Modified hidden states
+        """
+        pass
+
+    def fit(
+        self,
+        task: Optional[str] = None,
+        dataset: Optional[Any] = None,
+        eval_prompts: Optional[List[str]] = None,
+        batch_size: int = 8,
+    ) -> "ActivationSteering":
+        """
+        Fit the steering model on a task or dataset
+
+        Args:
+            task: Name of predefined task
+            dataset: Custom dataset
+            eval_prompts: Optional evaluation prompts
+            batch_size: Batch size for caching
+
+        Returns:
+            self for method chaining
+        """
+        # Load data
+        if task is not None:
+            self.dataset, self.unique_labels,
+            self.eval_prompts = self._load_task(task)
+        elif dataset is not None:
+            self.dataset = dataset
+            self.unique_labels = self._extract_labels(dataset)
+            self.eval_prompts = eval_prompts or []
+        else:
+            raise ValueError("Either 'task' or 'dataset' must be provided")
+
+        # Prepare prompts
+        train_prompts = self._get_prompts_from_dataset(self.dataset)
+        all_prompts = train_prompts + (self.eval_prompts or [])
+
+        # Cache hidden states
+        print(f"Caching hidden states for {len(all_prompts)} prompts...")
+        self.cache = self.get_hidden_cache(all_prompts, batch_size=batch_size)
+
+        # Build classifier/steering vectors
+        print("Building steering classifier...")
+        self.classifier = self.build_steering_trainer(self.cache, eval=False)
+        self._is_fitted = True
+
+        print("Fitting complete!")
+        return self
+
+    def _get_prompts_from_dataset(self, dataset: Any) -> List[str]:
+        """
+        Extract prompts from dataset
+
+        Args:
+            dataset: Dataset object
+
+        Returns:
+            List of prompt strings
+        """
+        if hasattr(dataset, "__iter__"):
+            prompts = [item.get("prompt", item.get("text", "")) for item in dataset]
+            return [p for p in prompts if p]
+        raise NotImplementedError("Override for custom dataset structure")
+
+    def get_steered_output(
+        self,
+        input_prompt: str,
+        steering_strength: Optional[float] = None,
+        layers: Optional[List[int]] = None,
+        layer_strengths: Optional[Dict[int, float]] = None,
+        max_new_tokens: int = 100,
+        return_dict: bool = False,
+        **generation_kwargs,
+    ) -> Union[str, Dict[str, Any]]:
+        """
+        Generate steered output for input prompt
+
+        Args:
+            input_prompt: Input text
+            steering_strength: Override default strength
+            layers: Override target layers
+            layer_strengths: Layer-specific strengths
+            max_new_tokens: Maximum tokens to generate
+            return_dict: Return full output dictionary
+            **generation_kwargs: Additional generation parameters
+
+        Returns:
+            Generated text or output dictionary
+        """
+        if not self._is_fitted:
+            raise RuntimeError(
+                "Model must be fitted before generation. Call fit() first."
+            )
+
+        # Get effective steering parameters
+        strength = steering_strength or self.config.steering_strength
+        target_layers = layers or self.config.layers
+        layer_str = layer_strengths or self.config.layer_strengths
+
+        # Prepare generation
+        gen_kwargs = self._prepare_generation_kwargs(
+            max_new_tokens=max_new_tokens, **generation_kwargs
+        )
+
+        # Subclass-specific steering implementation
+        output = self._generate_with_steering(
+            input_prompt, strength, target_layers, layer_str, gen_kwargs
+        )
+
+        if return_dict:
+            return output
+        return output.get("text", output)
+
+    def _prepare_generation_kwargs(
+        self,
+        max_new_tokens: int = 100,
+        temperature: float = 1.0,
+        top_p: float = 0.9,
+        do_sample: bool = True,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """
+        Prepare generation keyword arguments
+
+        Args:
+            max_new_tokens: Maximum tokens to generate
+            temperature: Sampling temperature
+            top_p: Nucleus sampling parameter
+            do_sample: Whether to use sampling
+            **kwargs: Additional generation parameters
+
+        Returns:
+            Dictionary of generation parameters
+        """
+        gen_kwargs = {
+            "max_new_tokens": max_new_tokens,
+            "temperature": temperature,
+            "top_p": top_p,
+            "do_sample": do_sample,
+            "pad_token_id": self.tokenizer.pad_token_id,
+            "eos_token_id": self.tokenizer.eos_token_id,
+        }
+        gen_kwargs.update(kwargs)
+        return gen_kwargs
+
+    def _generate_with_steering(
+        self,
+        input_prompt: str,
+        steering_strength: float,
+        target_layers: Optional[List[int]],
+        layer_strengths: Dict[int, float],
+        generation_kwargs: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Generate text with steering applied (base implementation)
+
+        Args:
+            input_prompt: Input text
+            steering_strength: Global steering strength
+            target_layers: Layers to apply steering
+            layer_strengths: Layer-specific strengths
+            generation_kwargs: Generation parameters
+
+        Returns:
+            Dictionary with generation results
+        """
+        # Basic implementation - subclasses can override
+        inputs = self.tokenizer(input_prompt, return_tensors="pt").to(self.device)
+
+        with torch.no_grad():
+            outputs = self.model.generate(**inputs, **generation_kwargs)
+
+        generated_text = self.tokenizer.decode(
+            outputs[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
+        )
+
+        return {
+            "text": generated_text,
+            "input_prompt": input_prompt,
+            "steering_strength": steering_strength,
+            "target_layers": target_layers,
+        }
+
+    def save(
+        self,
+        model_path: Union[str, Path],
+        filename: str,
+        *,
+        push_to_hub: bool = False,
+        repo_id: Optional[str] = None,
+        commit_message: str = "Add steering model artifacts",
+        private: Optional[bool] = None,
+    ) -> None:
+        """
+        Save steering model to disk
+
+        Args:
+            model_path: Directory to save
+            filename: Base filename
+            save_model: Whether to save full model (expensive)
+        """
+        model_path = Path(model_path)
+        model_path.mkdir(parents=True, exist_ok=True)
+
+        # Save steering config
+        config_path = model_path / f"{filename}_steering_config.json"
+        with open(config_path, "w") as f:
+            json.dump(self.steering_config.to_dict(), f, indent=2)
+
+        # Save trainer config
+        config_path = model_path / f"{filename}_trainer_config.json"
+        with open(config_path, "w") as f:
+            json.dump(self.trainer_config.to_dict(), f, indent=2)
+
+        # Save classifier/steering vectors
+        if self.classifier is not None:
+            clf_path = model_path / f"{filename}_classifier.pkl"
+            with open(clf_path, "wb") as f:
+                pickle.dump(self.classifier, f)
+
+        if self.steering_vectors is not None:
+            vec_path = model_path / f"{filename}_vectors.pt"
+            torch.save(self.steering_vectors, vec_path)
+
+        # Save metadata
+        metadata = {
+            "model_name": self.model_name,
+            "unique_labels": self.unique_labels,
+            "is_fitted": self._is_fitted,
+            "class_name": self.__class__.__name__,
+        }
+        metadata_path = model_path / f"{filename}_metadata.json"
+        with open(metadata_path, "w") as f:
+            json.dump(metadata, f, indent=2)
+
+        print(f"Model saved to {model_path / filename}")
+
+        if push_to_hub:
+            self.push_to_hub(
+                repo_id=repo_id,
+                commit_message=commit_message,
+                private=private,
+                local_dir=str(model_path),
+            )
+
+    def _get_repo_url(self, repo_id: str) -> str:
+        return f"https://huggingface.co/{repo_id}"
+
+    @classmethod
+    def load(
+        cls,
+        model_path: Union[str, Path],
+        filename: str,
+        *,
+        repo_id: Optional[str] = None,
+        revision: Optional[str] = None,
+    ) -> "ActivationSteering":
+        """
+        Load steering model from local disk or Hugging Face Hub.
+
+        Args:
+            model_path: Local directory OR cache dir for HF download
+            filename: Base filename
+            repo_id: Hugging Face repo id (if loading from hub)
+            revision: Branch / tag / commit
+        """
+        # ---------- resolve files ----------
+        if repo_id is not None:
+            # Download artifacts from HF into cache
+            def hf(path: str) -> Path:
+                return Path(
+                    cached_file(
+                        repo_id=repo_id,
+                        filename=path,
+                        revision=revision,
+                    )
+                )
+
+            metadata_path = hf(f"{filename}_metadata.json")
+            steering_config_path = hf(f"{filename}_steering_config.json")
+            trainer_config_path = hf(f"{filename}_trainer_config.json")
+            clf_path = hf(f"{filename}_classifier.pkl")
+            vec_path = hf(f"{filename}_vectors.pt")
+
+        else:
+            model_path = Path(model_path)
+            metadata_path = model_path / f"{filename}_metadata.json"
+            steering_config_path = model_path / f"{filename}_steering_config.json"
+            trainer_config_path = model_path / f"{filename}_trainer_config.json"
+            clf_path = model_path / f"{filename}_classifier.pkl"
+            vec_path = model_path / f"{filename}_vectors.pt"
+
+        # ---------- load metadata ----------
+        with open(metadata_path, "r") as f:
+            metadata = json.load(f)
+
+        # ---------- load steering config ----------
+        with open(steering_config_path, "r") as f:
+            steering_config_dict = json.load(f)
+        steering_config = SteeringConfig.from_dict(steering_config_dict)
+
+        # ---------- load trainer config ----------
+        with open(trainer_config_path, "r") as f:
+            trainer_config_dict = json.load(f)
+        trainer_config = TrainerConfig.from_dict(trainer_config_dict)
+
+        # ---------- initialize instance ----------
+        instance = cls(metadata["model_name"], steering_config, trainer_config)
+        instance.unique_labels = metadata["unique_labels"]
+        instance._is_fitted = metadata["is_fitted"]
+
+        # ---------- load classifier ----------
+        if clf_path.exists():
+            with open(clf_path, "rb") as f:
+                instance.classifier = pickle.load(f)
+
+        # ---------- load steering vectors ----------
+        if vec_path.exists():
+            instance.steering_vectors = torch.load(vec_path, map_location="cpu")
+
+        print(
+            f"Model loaded from "
+            f"{repo_id if repo_id is not None else metadata_path.parent}"
+        )
+        return instance
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}("
+            f"model_name='{self.model_name}', "
+            f"fitted={self._is_fitted}, "
+            f"steering_strength={self.config.steering_strength})"
+        )
+        
 
