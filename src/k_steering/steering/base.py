@@ -5,7 +5,6 @@ import json
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.utils import PushToHubMixin
-from huggingface_hub import cached_file
 import pickle
 
 from src.k_steering.steering.dataset import TaskDataset
@@ -73,6 +72,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         Returns:
             Tuple of (model, tokenizer)
         """
+        print(f"Loading Model: {model_name} from HuggingFace")
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
@@ -123,85 +123,108 @@ class ActivationSteering(ABC, PushToHubMixin):
 
     def get_hidden_cache(
         self,
-        prompts: List[str],
+        prompts: Dict[str, List[str]],  # e.g. {"train": [...], "eval": [...]}
         batch_size: int = 64,
-        return_attention_mask: bool = False,
-    ) -> Dict[str, torch.Tensor]:
+        return_attention_mask: bool = True,
+    ) -> Dict[str, Dict[Union[int, str], torch.Tensor]]:
         """
-        Get cached hidden states for all prompts
+        Get cached hidden states for multiple named prompt splits.
 
         Args:
-            prompts: List of input prompts
+            prompts: Dict mapping split name -> list of prompts
             batch_size: Batch size for processing
             return_attention_mask: Whether to include attention masks
 
         Returns:
-            Dictionary mapping layer indices to hidden states
+            {
+            split_name: {
+                layer_idx: Tensor [B, T, D],
+                ...
+                "attention_mask": Tensor [B, T]
+            }
+            }
         """
-        cache = {i: [] for i in range(len(self.model.transformer.h))}
-        attention_masks = [] if return_attention_mask else None
+        num_layers = self.model.config.num_hidden_layers
+        all_caches: Dict[str, Dict[Union[int, str], torch.Tensor]] = {}
 
         with torch.no_grad():
-            for i in range(0, len(prompts), batch_size):
-                batch = prompts[i : i + batch_size]
-                inputs = self.tokenizer(
-                    batch, return_tensors="pt", padding=True, truncation=True
-                ).to(self.device)
+            for split_name, split_prompts in prompts.items():
+                cache = {i: [] for i in range(num_layers + 1)}
+                attention_masks = [] if return_attention_mask else None
+
+                for i in range(0, len(split_prompts), batch_size):
+                    batch = split_prompts[i : i + batch_size]
+
+                    inputs = self.tokenizer(
+                        batch,
+                        return_tensors="pt",
+                        padding=True,
+                        truncation=True,
+                    ).to(self.device)
+
+                    if return_attention_mask:
+                        attention_masks.append(inputs["attention_mask"])
+
+                    outputs = self.model(
+                        **inputs,
+                        output_hidden_states=True,
+                        return_dict=True,
+                    )
+
+                    for layer_idx, hidden in enumerate(outputs.hidden_states):
+                        cache[layer_idx].append(hidden.cpu())
+
+                # concatenate batches
+                cache = {k: torch.cat(v, dim=0) for k, v in cache.items()}
 
                 if return_attention_mask:
-                    attention_masks.append(inputs["attention_mask"])
+                    cache["attention_mask"] = torch.cat(attention_masks, dim=0)
 
-                outputs = self.model(
-                    **inputs, output_hidden_states=True, return_dict=True
-                )
+                all_caches[split_name] = cache
 
-                # Cache hidden states from each layer
-                for layer_idx, hidden_state in enumerate(outputs.hidden_states):
-                    cache[layer_idx].append(hidden_state.cpu())
-
-        # Concatenate batches
-        cache = {k: torch.cat(v, dim=0) for k, v in cache.items()}
-
-        if return_attention_mask:
-            cache["attention_mask"] = torch.cat(attention_masks, dim=0)
-
-        self.cache = cache
-
-        return cache
+        return all_caches
 
     def get_layer_cache(
         self,
+        split_name: str,
         layer_idx: int,
-        prompts: Optional[List[str]] = None,
+        prompts: Optional[Dict[str, List[str]]] = None,
         batch_size: int = 64,
         use_cached: bool = True,
     ) -> torch.Tensor:
         """
-        Replicates get_hidden_cached_old using get_hidden_cache output.
-        Extracts the hidden state of the last non-padding token for each
-        prompt.
+        Extract the last non-padding token representation for a given
+        layer and named split.
 
         Returns:
             Tensor of shape [num_prompts, hidden_dim]
         """
-        # Ensure cache exists and contains attention_mask
-        if not (
-            use_cached and self.cache is not None and "attention_mask" in self.cache
+        # ---------- ensure cache for split exists ----------
+        if (
+            not use_cached
+            or self.cache is None
+            or split_name not in self.cache
+            or "attention_mask" not in self.cache[split_name]
         ):
-            if prompts is None:
+            if prompts is None or split_name not in prompts:
                 raise ValueError(
-                    "Must provide prompts if cache is not \
-                    available"
+                    f"Must provide prompts for split '{split_name}' "
+                    "if cache is not available"
                 )
 
-            self.cache = self.get_hidden_cache(
-                prompts,
-                batch_size=batch_size,
-                return_attention_mask=True,
+            # compute cache only for this split
+            self.cache = self.cache or {}
+            self.cache.update(
+                self.get_hidden_cache(
+                    {split_name: prompts[split_name]},
+                    batch_size=batch_size,
+                    return_attention_mask=True,
+                )
             )
 
-        hidden = self.cache[layer_idx]
-        attention_mask = self.cache["attention_mask"]
+        split_cache = self.cache[split_name]
+        hidden = split_cache[layer_idx] 
+        attention_mask = split_cache["attention_mask"]   # [B, T]
 
         # last non-padding token index
         lengths = attention_mask.sum(dim=1) - 1
@@ -265,8 +288,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         """
         # Load data
         if task is not None:
-            self.dataset, self.unique_labels,
-            self.eval_prompts = self._load_task(task)
+            self.dataset, self.unique_labels, self.eval_prompts = self._load_task(task)
         elif dataset is not None:
             self.dataset = dataset
             self.unique_labels = self._extract_labels(dataset)
@@ -277,10 +299,13 @@ class ActivationSteering(ABC, PushToHubMixin):
         # Prepare prompts
         train_prompts = self._get_prompts_from_dataset(self.dataset)
         self.n_train_prompts = len(train_prompts)
-        all_prompts = train_prompts + (self.eval_prompts or [])
+        all_prompts = {
+                            "train": train_prompts,
+                            "eval": self.eval_prompts,
+                        }
 
         # Cache hidden states
-        print(f"Caching hidden states for {len(all_prompts)} prompts...")
+        print(f"Caching hidden states for {all_prompts.keys()} prompt splits...")
         self.cache = self.get_hidden_cache(all_prompts, batch_size=batch_size)
 
         # Build classifier/steering vectors
@@ -308,7 +333,7 @@ class ActivationSteering(ABC, PushToHubMixin):
 
     def get_steered_output(
         self,
-        input_prompt: str,
+        input_prompts: List[str],
         steering_strength: Optional[float] = None,
         layers: Optional[List[int]] = None,
         layer_strengths: Optional[Dict[int, float]] = None,
@@ -337,9 +362,9 @@ class ActivationSteering(ABC, PushToHubMixin):
             )
 
         # Get effective steering parameters
-        strength = steering_strength or self.config.steering_strength
-        target_layers = layers or self.config.layers
-        layer_str = layer_strengths or self.config.layer_strengths
+        strength = steering_strength or self.steering_config.steering_strength
+        target_layers = layers or self.steering_config.steer_layers
+        layer_str = layer_strengths or self.steering_config.layer_strengths
 
         # Prepare generation
         gen_kwargs = self._prepare_generation_kwargs(
@@ -348,7 +373,7 @@ class ActivationSteering(ABC, PushToHubMixin):
 
         # Subclass-specific steering implementation
         output = self._generate_with_steering(
-            input_prompt, strength, target_layers, layer_str, gen_kwargs
+            input_prompts, strength, target_layers, layer_str, gen_kwargs
         )
 
         if return_dict:

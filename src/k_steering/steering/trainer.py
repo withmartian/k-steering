@@ -113,11 +113,11 @@ class ActivationSteeringTrainer:
 
         B, _ = logits.shape
         if avoid_idx.numel() > 0:
-            avoid_term = logits[:, avoid_idx].mean(dim=1)
+            avoid_term = logits.index_select(1, avoid_idx).mean(dim=1)
         else:
             avoid_term = torch.zeros(B, device=logits.device)
         if target_idx.numel() > 0:
-            target_term = logits[:, target_idx].mean(dim=1)
+            target_term = logits.index_select(1, target_idx).mean(dim=1)
         else:
             target_term = torch.zeros(B, device=logits.device)
         return avoid_term - target_term

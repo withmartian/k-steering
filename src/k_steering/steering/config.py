@@ -7,20 +7,26 @@ class SteeringConfig:
 
     def __init__(
         self,
+        train_layer: Optional[int],
         steering_strength: float = 1.0,
-        eval_layers: Optional[List[int]] = None,
+        eval_layer: Optional[int] = None,
+        steer_layers: Optional[List[int]] = None,
         layer_strengths: Optional[Dict[int, float]] = None,
         **kwargs
     ):
         self.steering_strength = steering_strength
-        self.eval_layers = eval_layers
+        self.eval_layer = eval_layer
+        self.train_layer = train_layer
+        self.steer_layers = steer_layers
         self.layer_strengths = layer_strengths or {}
         self.extra_config = kwargs
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             'steering_strength': self.steering_strength,
-            'eval_layers': self.eval_layers,
+            'eval_layer': self.eval_layer,
+            'train_layer':self.train_layer,
+            'steer_layers': self.steer_layers,
             'layer_strengths': self.layer_strengths,
             **self.extra_config
         }
@@ -35,8 +41,8 @@ class TrainerConfig:
 
     def __init__(
         self,
-        input_dim: int,
-        num_labels: int,
+        input_dim: int=None,
+        num_labels: int=None,
         hidden_dim: int = 128,
         linear: bool = False,
         lr: float = 1e-3,
