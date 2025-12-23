@@ -43,7 +43,7 @@ class KSteering(ActivationSteering):
         super().__init__(model_name, steering_config,trainer_config, device)
         
     def build_steering_trainer(
-        self, cache: Dict[str, torch.Tensor], eval: bool = False
+        self, eval: bool = False
     ):
         """
         Build steering classifier/vectors from cached activations
@@ -80,7 +80,7 @@ class KSteering(ActivationSteering):
     def _apply_steering(
         self,
         hidden_states: torch.Tensor,
-        layer_idx: List[int],
+        target_idx: List[int],
         steering_strength: float,
         rest: Optional[torch.Tensor] = None,
         avoid_idx: List[int] | None = None,
@@ -117,7 +117,7 @@ class KSteering(ActivationSteering):
                 logits = self.k_clf.classifier(h_step)
                 logits = logits.view(B, S, -1).mean(dim=1)
                 loss_vec = self.k_clf._compute_steering_loss(
-                    logits, target_idx=layer_idx, avoid_idx=avoid_idx
+                    logits, target_idx=target_idx, avoid_idx=avoid_idx
                 )
                 if loss_vec.numel() > 0:
                     grad = torch.autograd.grad(
@@ -141,6 +141,8 @@ class KSteering(ActivationSteering):
         self,
         input_prompts: List[str],
         steering_strength: float,
+        target_labels: List[str],
+        avoid_labels: Optional[List[str]],
         target_layers: Optional[List[int]],
         layer_strengths: Dict[int, float],
         generation_kwargs: Dict[str, Any]
@@ -162,7 +164,7 @@ class KSteering(ActivationSteering):
         # Hook to apply steering during generation
         hooks = []
         
-        def make_hook(layer_idx):
+        def make_hook(layer_idx, target_idx, avoid_idx):
             def hook(module, input, output):
                 # Get effective strength for this layer
                 strength = layer_strengths.get(layer_idx, steering_strength)
@@ -171,20 +173,37 @@ class KSteering(ActivationSteering):
                 if isinstance(output, tuple):
                     hidden_states = output[0]
                     rest = output[1:]
-                    steered = self._apply_steering(hidden_states, layer_idx, strength, rest)
+                    steered = self._apply_steering(hidden_states=hidden_states,
+                                                   target_idx=target_idx,
+                                                   avoid_idx=avoid_idx,
+                                                   steering_strength=strength,
+                                                   rest=rest)
                     return (steered,) + output[1:]
                 else:
                     rest = None
-                    return self._apply_steering(output, layer_idx, strength, rest)
+                    return self._apply_steering(hidden_states=output,
+                                                target_idx=target_idx,
+                                                avoid_idx=avoid_idx,
+                                                steering_strength=strength,
+                                                rest=rest)
 
             return hook
         
         model_layers = get_transformer_layers(self.model)
         # Register hooks on target layers
+        target_idx = [self.tone2idx[t] for t in target_labels]
+        
+        avoid_idx = None
+        if avoid_labels:
+            avoid_idx = [self.tone2idx[t] for t in avoid_labels]
+            print(f"Generating Output for {target_labels} target labels and {avoid_labels} avoid labels")
+        else:
+            print(f"Generating Output for {target_labels} target labels")
+            
         for layer_idx in target_layers:
             if layer_idx < self.model.config.num_hidden_layers:
                 handle = model_layers[layer_idx].register_forward_hook(
-                    make_hook(layer_idx)
+                    make_hook(layer_idx, target_idx, avoid_idx)
                 )
                 hooks.append(handle)
         

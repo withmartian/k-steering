@@ -45,6 +45,7 @@ class ActivationSteeringTrainer:
         self.loss_fn = nn.BCEWithLogitsLoss()
 
     def fit(self, X: np.ndarray, Y: np.ndarray, *, epochs: int = 10, batch_size: int = 32) -> None:
+        
         X_t = torch.tensor(X, dtype=torch.float32, device=self.device)
         Y_t = torch.tensor(Y, dtype=torch.float32, device=self.device)
         dataset = torch.utils.data.TensorDataset(X_t, Y_t)
@@ -113,11 +114,11 @@ class ActivationSteeringTrainer:
 
         B, _ = logits.shape
         if avoid_idx.numel() > 0:
-            avoid_term = logits.index_select(1, avoid_idx).mean(dim=1)
+            avoid_term = logits.index_select(dim=1,index=avoid_idx).mean(dim=1)
         else:
             avoid_term = torch.zeros(B, device=logits.device)
         if target_idx.numel() > 0:
-            target_term = logits.index_select(1, target_idx).mean(dim=1)
+            target_term = logits.index_select(dim=1,index=target_idx).mean(dim=1)
         else:
             target_term = torch.zeros(B, device=logits.device)
         return avoid_term - target_term

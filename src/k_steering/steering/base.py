@@ -58,7 +58,6 @@ class ActivationSteering(ABC, PushToHubMixin):
 
         # Steering components (subclass-specific)
         self.steering_vectors = None
-        self.classifier = None
 
     def _load_hf_model(
         self, model_name: str
@@ -295,6 +294,8 @@ class ActivationSteering(ABC, PushToHubMixin):
             self.eval_prompts = eval_prompts or []
         else:
             raise ValueError("Either 'task' or 'dataset' must be provided")
+        
+        self.tone2idx = {t: i for i, t in enumerate(self.unique_labels)}
 
         # Prepare prompts
         train_prompts = self._get_prompts_from_dataset(self.dataset)
@@ -309,11 +310,11 @@ class ActivationSteering(ABC, PushToHubMixin):
         self.cache = self.get_hidden_cache(all_prompts, batch_size=batch_size)
 
         # Build classifier/steering vectors
-        print("Building steering classifier...")
-        self.classifier = self.build_steering_trainer(self.cache, eval=False)
+        print("Building Steering Trainer...")
+        self.build_steering_trainer(eval=False)
         self._is_fitted = True
 
-        print("Fitting complete!")
+        print("Training complete!")
         return self
 
     def _get_prompts_from_dataset(self, dataset: Any) -> List[str]:
@@ -336,6 +337,8 @@ class ActivationSteering(ABC, PushToHubMixin):
         input_prompts: List[str],
         steering_strength: Optional[float] = None,
         layers: Optional[List[int]] = None,
+        target_labels: Optional[List[str]] = None,
+        avoid_labels: Optional[List[str]] = None,
         layer_strengths: Optional[Dict[int, float]] = None,
         max_new_tokens: int = 100,
         return_dict: bool = False,
@@ -365,6 +368,8 @@ class ActivationSteering(ABC, PushToHubMixin):
         strength = steering_strength or self.steering_config.steering_strength
         target_layers = layers or self.steering_config.steer_layers
         layer_str = layer_strengths or self.steering_config.layer_strengths
+        target_lbls = target_labels or self.steering_config.target_labels
+        avoid_lbls = avoid_labels or self.steering_config.avoid_labels
 
         # Prepare generation
         gen_kwargs = self._prepare_generation_kwargs(
@@ -373,7 +378,13 @@ class ActivationSteering(ABC, PushToHubMixin):
 
         # Subclass-specific steering implementation
         output = self._generate_with_steering(
-            input_prompts, strength, target_layers, layer_str, gen_kwargs
+            input_prompts=input_prompts,
+            steering_strength = strength,
+            target_labels=target_lbls,
+            avoid_labels=avoid_lbls,
+            target_layers=target_layers,
+            layer_strengths=layer_str,
+            generation_kwargs=gen_kwargs
         )
 
         if return_dict:
@@ -416,6 +427,8 @@ class ActivationSteering(ABC, PushToHubMixin):
         self,
         input_prompt: str,
         steering_strength: float,
+        target_labels: List[str],
+        avoid_labels: Optional[List[str]],
         target_layers: Optional[List[int]],
         layer_strengths: Dict[int, float],
         generation_kwargs: Dict[str, Any],
@@ -482,10 +495,10 @@ class ActivationSteering(ABC, PushToHubMixin):
             json.dump(self.trainer_config.to_dict(), f, indent=2)
 
         # Save classifier/steering vectors
-        if self.classifier is not None:
+        if self.k_clf is not None:
             clf_path = model_path / f"{filename}_classifier.pkl"
             with open(clf_path, "wb") as f:
-                pickle.dump(self.classifier, f)
+                pickle.dump(self.k_clf, f)
 
         if self.steering_vectors is not None:
             vec_path = model_path / f"{filename}_vectors.pt"
