@@ -6,6 +6,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.utils import PushToHubMixin
 import pickle
+from huggingface_hub import hf_hub_download
 
 from src.k_steering.steering.dataset import TaskDataset
 from src.k_steering.steering.config import SteeringConfig, TrainerConfig
@@ -525,6 +526,19 @@ class ActivationSteering(ABC, PushToHubMixin):
                 local_dir=str(model_path),
             )
 
+    def save_pretrained(
+        self,
+        save_directory: Union[str, Path],
+        *,
+        filename: str = "activation_steering",
+        **kwargs,
+    ):
+        self.save(
+            model_path=save_directory,
+            filename=filename,
+            push_to_hub=False,  # important: avoid recursion
+        )
+        
     def _get_repo_url(self, repo_id: str) -> str:
         return f"https://huggingface.co/{repo_id}"
 
@@ -551,18 +565,25 @@ class ActivationSteering(ABC, PushToHubMixin):
             # Download artifacts from HF into cache
             def hf(path: str) -> Path:
                 return Path(
-                    cached_file(
+                    hf_hub_download(
                         repo_id=repo_id,
                         filename=path,
                         revision=revision,
+                        cache_dir=model_path
                     )
                 )
 
             metadata_path = hf(f"{filename}_metadata.json")
             steering_config_path = hf(f"{filename}_steering_config.json")
             trainer_config_path = hf(f"{filename}_trainer_config.json")
-            clf_path = hf(f"{filename}_classifier.pkl")
-            vec_path = hf(f"{filename}_vectors.pt")
+            try:
+                clf_path = hf(f"{filename}_classifier.pkl")
+            except Exception as e:
+                pass
+            try:
+                vec_path = hf(f"{filename}_vectors.pt")
+            except Exception as e:
+                pass
 
         else:
             model_path = Path(model_path)
@@ -590,15 +611,22 @@ class ActivationSteering(ABC, PushToHubMixin):
         instance = cls(metadata["model_name"], steering_config, trainer_config)
         instance.unique_labels = metadata["unique_labels"]
         instance._is_fitted = metadata["is_fitted"]
+        instance.tone2idx = {t: i for i, t in enumerate(metadata['unique_labels'])}
 
         # ---------- load classifier ----------
-        if clf_path.exists():
+        # if clf_path.exists():
+        try:
             with open(clf_path, "rb") as f:
-                instance.classifier = pickle.load(f)
-
+                instance.k_clf = pickle.load(f)
+        except UnboundLocalError as e:
+            pass
+    
         # ---------- load steering vectors ----------
-        if vec_path.exists():
+        # if vec_path.exists():
+        try:
             instance.steering_vectors = torch.load(vec_path, map_location="cpu")
+        except UnboundLocalError as e:
+            pass
 
         print(
             f"Model loaded from "

@@ -67,7 +67,7 @@ class TrainerConfig:
             'hidden_dim': self.hidden_dim,
             'num_labels': self.num_labels,
             'linear': self.linear,
-            'lr': self.lr
+            'lr': self.lr,
             **self.extra_config
         }
 
