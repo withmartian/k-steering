@@ -67,13 +67,16 @@ Use the following schema exactly:
 
 {
   "baseline_scores": {
-    "{avoid_style}": <number from 0 to 10>
+    avoid_style: "{avoid_style}",
+    avoid_style_score: <number from 0 to 10>
   },
   "steered_scores": {
-    "{avoid_style}": <number from 0 to 10>
+    avoid_style: "{avoid_style}",
+    avoid_style_score: <number from 0 to 10>
   },
   "moved_away": {
-    "{avoid_style}": <true or false>
+    avoid_style: "{avoid_style}",
+    avoid_style_bool: <true or false>
   },
   "steering_successful": <true or false>,
   "steering_strength": <number from 0 to 5>,
@@ -169,18 +172,24 @@ Use the following schema exactly:
 
 {
   "baseline_scores": {
-    "{avoid_style}": <number from 0 to 10>,
-    "{target_style}": <number from 0 to 10>
+    avoid_style: "{avoid_style}",
+    avoid_style_score: <number from 0 to 10>,
+    target_style: "{target_style}",
+    target_style_score: <number from 0 to 10>
   },
   "steered_scores": {
-    "{avoid_style}": <number from 0 to 10>,
-    "{target_style}": <number from 0 to 10>
+    avoid_style: "{avoid_style}",
+    avoid_style_score: <number from 0 to 10>,
+    target_style: "{target_style}",
+    target_style_score: <number from 0 to 10>
   },
   "moved_away: {
-      {avoid_style}: <true or false>
+      avoid_style: "{avoid_style}",
+      avoid_style_bool: <true or false>
       },
   "moved_towards: {
-      {target_style}: <true or false>
+      target_style: "{target_style}",
+      target_style_bool: <true or false>
       },
   "steering_successful": <true or false>,
   "steering_strength": <number from 0 to 5>,
