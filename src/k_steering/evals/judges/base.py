@@ -5,6 +5,7 @@ from jinja2 import Template
 from pydantic import BaseModel
 
 from k_steering.utils.io import openai_api_call, anthropic_api_call
+from k_steering.utils.prompt_templates import AVOID_AND_TOWARDS_EVALUATION_PROMPT_TEMPLATE_STR, AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR
 
 class BaseLLMJudge(ABC):
     """
@@ -87,7 +88,6 @@ class BaseLLMJudge(ABC):
         target_style: Optional[str],
     ) -> str:
         template_str = self._select_prompt_template(
-            avoid_style=avoid_style,
             target_style=target_style,
         )
 
@@ -100,16 +100,18 @@ class BaseLLMJudge(ABC):
 
         return Template(template_str).render(context)
     
-    @abstractmethod
+    
     def _select_prompt_template(
         self,
-        avoid_style: str,
-        target_style: Optional[str],
+        target_style: None,
     ) -> str:
         """
         Return the correct prompt template string.
         """
-        raise NotImplementedError
+        if target_style:
+            return AVOID_AND_TOWARDS_EVALUATION_PROMPT_TEMPLATE_STR
+        else:
+            return AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR
 
     def _build_prompt_context(
         self,
@@ -158,12 +160,14 @@ class BaseLLMJudge(ABC):
             max_tokens=max_tokens,
         )
 
-    @abstractmethod
     def _postprocess_result(self, parsed_output: Dict) -> Dict:
         """
         Convert raw judge JSON into the standardized output for this judge.
         """
-        raise NotImplementedError
+        return {
+            "steering_successful": parsed_output["steering_successful"],
+            "steering_strength": parsed_output["steering_strength"],
+        }
 
     def _aggregate_results(self, results: List[Dict]) -> Dict:
         """
