@@ -7,13 +7,14 @@ class SteeringConfig:
 
     def __init__(
         self,
-        target_labels: List[str],
+        target_labels: List[str]=None,
         avoid_labels: Optional[List[str]]=None,
         train_layer: Optional[int]=-1,
         steering_strength: float = 1.0,
         eval_layer: Optional[int] = None,
         steer_layers: Optional[List[int]] = None,
         layer_strengths: Optional[Dict[int, float]] = None,
+        pos: Optional[int] = None,
         **kwargs
     ):
         self.target_labels = target_labels
@@ -23,6 +24,7 @@ class SteeringConfig:
         self.train_layer = train_layer
         self.steer_layers = steer_layers
         self.layer_strengths = layer_strengths or {}
+        self.pos = pos
         self.extra_config = kwargs
 
     def to_dict(self) -> Dict[str, Any]:
@@ -34,6 +36,7 @@ class SteeringConfig:
             'train_layer':self.train_layer,
             'steer_layers': self.steer_layers,
             'layer_strengths': self.layer_strengths,
+            'pos': self.pos,
             **self.extra_config
         }
 
