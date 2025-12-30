@@ -57,7 +57,6 @@ class CAASteering(ActivationSteering):
         
     def fit(
         self,
-        style: str ,
         task: Optional[str] = None,
         dataset: Optional[Any] = None,
         batch_size: int = 64,
@@ -87,7 +86,7 @@ class CAASteering(ActivationSteering):
         if task == "tones":
             self.style_instructions = TONE_DESCRIPTIONS
         elif task == "debates":
-            self.style_instructions = DEBATE_DESCRIPTIONS
+            self.style_instructions = {key: DEBATE_DESCRIPTIONS[key] for key in DEBATE_DESCRIPTIONS.keys() if key in ['Empirical Grounding','Straw Man Reframing']}
         elif style_instructions:
             self.style_instructions = style_instructions
         else:
@@ -97,15 +96,8 @@ class CAASteering(ActivationSteering):
                 
             
         # Prepare prompts
-        self.style = style
         self.neutral_prompts = self.format_prompt(self.prompts)
-        
-        self.formatted_prompts = self.format_prompt(self.prompts, self.style)
-        
         neutral_train_prompts, neutral_eval_prompts = train_test_split(self.neutral_prompts, test_size=0.2, random_state=42)
-        
-        formatted_train_prompts, formatted_eval_prompts = train_test_split(self.formatted_prompts, test_size=0.2, random_state=42)
-        
         
         # self.n_train_prompts = len(train_prompts)
         all_neutral_prompts = {
@@ -113,17 +105,25 @@ class CAASteering(ActivationSteering):
                             "eval": neutral_eval_prompts,
                         }
         
-        all_formatted_prompts = {
-                            "train": formatted_train_prompts,
-                            "eval": formatted_eval_prompts,
-                        }
-
         # Cache hidden states
-        print(f"Caching hidden states for {all_neutral_prompts.keys()} neutral prompt type...")
+        print(f"Caching hidden states for {all_neutral_prompts.keys()} neutral prompt style...")
         self.cache['neutral'] = self.get_hidden_cache(all_neutral_prompts, batch_size=batch_size)
         
-        print(f"Caching hidden states for {all_neutral_prompts.keys()} formatted prompt type...")
-        self.cache['formatted'] = self.get_hidden_cache(all_formatted_prompts, batch_size=batch_size)
+        for style in self.style_instructions.keys():
+        
+            formatted_prompts = self.format_prompt(self.prompts, style)
+        
+            formatted_train_prompts, formatted_eval_prompts = train_test_split(formatted_prompts, test_size=0.2, random_state=42)
+    
+            all_formatted_prompts = {
+                                "train": formatted_train_prompts,
+                                "eval": formatted_eval_prompts,
+                            }
+
+        
+        
+            print(f"Caching hidden states for {all_formatted_prompts.keys()} in {style} prompt style...")
+            self.cache[style] = self.get_hidden_cache(all_formatted_prompts, batch_size=batch_size)
 
         # Build classifier/steering vectors
         print("Building Steering Trainer...")
@@ -196,7 +196,7 @@ class CAASteering(ActivationSteering):
     
     def get_layer_cache(
         self,
-        type: str,
+        style: str,
         split_name: str,
         layer_idx: int,
         pos: int = -1,
@@ -216,7 +216,7 @@ class CAASteering(ActivationSteering):
         if (
             not use_cached 
             or self.cache is None 
-            or type not in self.cache
+            or style not in self.cache
         ):
             if prompts is None or split_name not in prompts:
                 raise ValueError(
@@ -225,24 +225,25 @@ class CAASteering(ActivationSteering):
                 )
 
             # compute cache only for this split
-            self.cache[type] = {}
-            if type == "neutral":
+            self.cache[style] = {}
+            if style == "neutral":
                 train_prompts, eval_prompts = train_test_split(self.neutral_prompts, test_size=0.2, random_state=42)
             else:
-                train_prompts, eval_prompts = train_test_split(self.formatted_prompts, test_size=0.2, random_state=42)
+                formatted_prompts = self.format_prompt(self.prompts, style)
+                train_prompts, eval_prompts = train_test_split(formatted_prompts, test_size=0.2, random_state=42)
             
             prompts = {
                             "train": train_prompts,
                             "eval": eval_prompts,
                         }
-            self.cache[type].update(
+            self.cache[style].update(
                 self.get_hidden_cache(
                     {split_name: prompts[split_name]},
                     batch_size=batch_size
                 )
             )
         
-        split_cache = self.cache[type][split_name]
+        split_cache = self.cache[style][split_name]
         acts = (
                     split_cache[('resid_pre', layer_idx)][:, pos, :]
                     .detach()
@@ -275,26 +276,27 @@ class CAASteering(ActivationSteering):
         
         
         
-        neutral_cache = self.get_layer_cache(type = "neutral",split_name=split_name, layer_idx = layer_idx, pos=pos)
-        formatted_cache = self.get_layer_cache(type = "formatted",split_name=split_name, layer_idx = layer_idx, pos=pos)
+        neutral_cache = self.get_layer_cache(style = "neutral",split_name=split_name, layer_idx = layer_idx, pos=pos)
         
-        self.caa_vectors = torch.tensor(
-                                        np.mean(formatted_cache, axis=0) - np.mean(neutral_cache, axis=0),
-                                        dtype=torch.float32
-                                    )
+        
+        for style in self.style_instructions.keys():
+            formatted_cache = self.get_layer_cache(style = style,split_name=split_name, layer_idx = layer_idx, pos=pos)
+            self.steering_vectors[style] = torch.tensor(
+                                            np.mean(formatted_cache, axis=0) - np.mean(neutral_cache, axis=0),
+                                            dtype=torch.float32
+                                        )
     
     def _apply_steering(
         self,
         hidden_states: torch.Tensor,
-        layer_idx: List[int],
-        steering_strength: float,
-        rest: Optional[torch.Tensor] = None,
-        avoid_idx: List[int] | None = None,
+        target_labels: List[str],
+        steering_strength: float = None,
+        avoid_labels: List[str] | None = None,
         steps: int = 1,
         step_size_decay: float = 1.0,
     ) -> torch.Tensor:
         """
-        Apply K-steering to hidden states
+        Apply CAA-steering to hidden states
         
         Args:
             hidden_states: Original hidden states [batch, seq_len, hidden_dim]
@@ -304,8 +306,7 @@ class CAASteering(ActivationSteering):
         Returns:
             Steered hidden states
         """
-        if avoid_idx is None:
-            avoid_idx = []
+        
         if isinstance(hidden_states, np.ndarray):
             # acts_t = torch.as_tensor(hidden_states, dtype=torch.float32, device=self.device)
             acts_t = torch.as_tensor(hidden_states, device=self.device)
@@ -313,46 +314,33 @@ class CAASteering(ActivationSteering):
             # acts_t = hidden_states.to(self.device, dtype=torch.float32)
             acts_t = hidden_states.to(self.device)
             
-        B, S, D = acts_t.shape
-
-        h_current = acts_t.reshape(-1, D).float()
-        for step in range(steps):
-            h_step = h_current.clone()
-            h_step.requires_grad_(True)
-            with torch.enable_grad():
-                logits = self.k_clf.classifier(h_step)
-                logits = logits.view(B, S, -1).mean(dim=1)
-                loss_vec = self.k_clf._compute_steering_loss(
-                    logits, target_idx=layer_idx, avoid_idx=avoid_idx
-                )
-                if loss_vec.numel() > 0:
-                    grad = torch.autograd.grad(
-                        outputs=loss_vec,
-                        inputs=h_step,
-                        grad_outputs=torch.ones_like(loss_vec),
-                        retain_graph=False,
-                        create_graph=False,
-                    )[0]
-                    current_alpha = steering_strength * (step_size_decay ** step)
-                    grad = grad.view(B * S, D)
-                    h_current = (h_step - current_alpha * grad).detach()
-                else:
-                    h_current = h_step.detach()
-        h_new = h_current.reshape(B, S, D).to(acts_t.dtype)
-        if rest is None:
-            return h_new
-        return (h_new,) + rest
+        if avoid_labels is not None:
+            combined_vector = sum(self.steering_vectors[c] for c in target_labels) - sum(self.steering_vectors[c] for c in avoid_labels)
+        else:
+            combined_vector = sum(self.steering_vectors[c] for c in target_labels)
+        
+        # Normalize the vector (L2)
+        norm = combined_vector.norm(p=2)
+        if norm == 0:
+            # Avoid division by zero (no steering)
+            return hidden_states
+        normalized_vector = combined_vector / norm
+        normalized_vector = normalized_vector.to(dtype = hidden_states.dtype)
+        # Apply scaled direction
+        return hidden_states + steering_strength * normalized_vector.to(hidden_states.device)
     
     def _generate_with_steering(
         self,
         input_prompts: List[str],
         steering_strength: float,
+        target_labels: List[str],
+        avoid_labels: Optional[List[str]],
         target_layers: Optional[List[int]],
         layer_strengths: Dict[int, float],
         generation_kwargs: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Generate text with CAA-steering applied
+        Generate text with K-steering applied
         
         Args:
             input_prompts: Input text
@@ -368,7 +356,7 @@ class CAASteering(ActivationSteering):
         # Hook to apply steering during generation
         hooks = []
         
-        def make_hook(layer_idx):
+        def make_hook(layer_idx, target_labels, avoid_labels):
             def hook(module, input, output):
                 # Get effective strength for this layer
                 strength = layer_strengths.get(layer_idx, steering_strength)
@@ -377,20 +365,28 @@ class CAASteering(ActivationSteering):
                 if isinstance(output, tuple):
                     hidden_states = output[0]
                     rest = output[1:]
-                    steered = self._apply_steering(hidden_states, layer_idx, strength, rest)
+                    steered = self._apply_steering(hidden_states=hidden_states,
+                                                   target_labels=target_labels,
+                                                   avoid_labels=avoid_labels,
+                                                   steering_strength=strength)
                     return (steered,) + output[1:]
                 else:
                     rest = None
-                    return self._apply_steering(output, layer_idx, strength, rest)
+                    return self._apply_steering(hidden_states=output,
+                                                target_labels=target_labels,
+                                                avoid_labels=avoid_labels,
+                                                steering_strength=strength)
 
             return hook
         
         model_layers = get_transformer_layers(self.model)
         # Register hooks on target layers
+        
+            
         for layer_idx in target_layers:
             if layer_idx < self.model.config.num_hidden_layers:
                 handle = model_layers[layer_idx].register_forward_hook(
-                    make_hook(layer_idx)
+                    make_hook(layer_idx, target_labels, avoid_labels)
                 )
                 hooks.append(handle)
         
@@ -469,9 +465,3 @@ class CAASteering(ActivationSteering):
                 acts[('attn_out', layer)]
             )
     
-        
-class CAACache(dict):
-    def __getitem__(self, key):
-        if isinstance(key, tuple) and len(key) == 2:
-            return super().__getitem__(key)
-        raise KeyError(key)
