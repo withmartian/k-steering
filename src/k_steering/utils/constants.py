@@ -35,3 +35,6 @@ DEBATE_DESCRIPTIONS = {
 
 
 DEBATE_JUDGE_SYSTEM_PROMPT = "You are a debate style judge trained to evaluate whether a text has been successfully steered away from one debate style and toward another."
+
+
+ALPACA_JUDGE_SYSTEM_PROMPT = "You are a strict and impartial evaluator of model-generated responses. Follow the provided evaluation rubric exactly and return only the requested JSON output."

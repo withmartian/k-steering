@@ -198,3 +198,113 @@ Use the following schema exactly:
 }
 
 """
+
+
+ALPACA_EVAL_PROMPT_TEMPLATE_STR = """You are an expert evaluator of instruction-following model outputs.
+
+Your task is to evaluate the quality of a model-generated response to a user
+instruction, using well-defined and consistent rubrics.
+
+You must evaluate the response objectively, using the rubric definitions,
+scales, and decision rules provided below.
+
+────────────────────────────────────
+TASK CONTEXT
+────────────────────────────────────
+Benchmark: Tiny Alpaca
+Task description: The model is expected to produce a helpful, correct, and well-formed response
+to a user instruction from the Tiny Alpaca benchmark, following all explicit
+and implicit instruction constraints.
+
+User instruction:
+```
+{dataset_instruction}
+```
+
+Model output:
+```
+{model_output}
+```
+
+Reference answer (if available, may be empty):
+```
+{dataset_output}
+```
+
+────────────────────────────────────
+EVALUATION RUBRICS
+────────────────────────────────────
+
+Evaluate the model output using the following rubrics.
+
+Each rubric is scored independently using the specified scale.
+
+1. **Coherence (0–5)**
+   - 0 = Incoherent, nonsensical, or logically broken
+   - 3 = Mostly coherent with minor issues
+   - 5 = Fully coherent, logically consistent, and well-structured
+
+2. **Relevance (0–5)**
+   - 0 = Does not address the instruction
+   - 3 = Partially addresses the instruction
+   - 5 = Directly and fully addresses the instruction
+
+3. **Fluency (0–5)**
+   - 0 = Grammatically broken or unnatural
+   - 3 = Mostly fluent with minor grammatical or stylistic issues
+   - 5 = Fluent, natural, and grammatically correct
+
+4. **Instruction Adherence (0–5)**
+   - 0 = Ignores or violates key instruction constraints
+   - 3 = Follows instruction but misses some constraints or details
+   - 5 = Fully follows all explicit and implicit instruction constraints
+
+5. **Factual Consistency / Hallucination (0–5)**
+   - 0 = Contains clear hallucinations or false statements
+   - 3 = Minor factual inaccuracies or unsupported claims
+   - 5 = Factually consistent and well-grounded
+   - If the instruction does not require factual knowledge, score based on
+     internal consistency and plausibility.
+
+────────────────────────────────────
+OVERALL QUALITY ASSESSMENT
+────────────────────────────────────
+
+- **Overall Quality (0–5)**  
+  Provide an overall quality score that reflects the combined performance
+  across all rubrics. This score should not be a simple average; weigh
+  relevance and instruction adherence more heavily than fluency.
+
+- **Is the output acceptable? (true/false)**  
+  The output is acceptable only if:
+  - Coherence ≥ 3
+  - Relevance ≥ 3
+  - Instruction Adherence ≥ 3
+  - No severe hallucinations (Factual Consistency ≥ 2)
+
+────────────────────────────────────
+OUTPUT REQUIREMENTS
+────────────────────────────────────
+
+- Respond **only** with a valid JSON object.
+- Do not include markdown, commentary, or extra text.
+- Ensure all boolean values are lowercase (`true` / `false`).
+
+Use the following schema exactly:
+
+{
+  "rubric_scores": {
+    "coherence": <number from 0 to 5>,
+    "relevance": <number from 0 to 5>,
+    "fluency": <number from 0 to 5>,
+    "instruction_adherence": <number from 0 to 5>,
+    "factual_consistency": <number from 0 to 5>
+  },
+  "overall_quality": <number from 0 to 5>,
+  "is_acceptable": <true or false>,
+  "explanation": "<brief, concrete justification highlighting key strengths and weaknesses>"
+}
+
+
+
+"""
