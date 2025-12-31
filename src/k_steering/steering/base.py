@@ -6,6 +6,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.utils import PushToHubMixin
 import pickle
+from collections import defaultdict
 from huggingface_hub import hf_hub_download
 
 from src.k_steering.steering.dataset import TaskDataset
@@ -58,7 +59,8 @@ class ActivationSteering(ABC, PushToHubMixin):
         self._is_fitted = False
 
         # Steering components (subclass-specific)
-        self.steering_vectors = None
+        self.steering_vectors = {}
+        self.k_clf = None
 
     def _load_hf_model(
         self, model_name: str
