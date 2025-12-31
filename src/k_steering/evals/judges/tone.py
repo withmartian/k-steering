@@ -1,5 +1,5 @@
 from typing import Dict
-from k_steering.evals.judges.base import BaseLLMJudge
+from k_steering.evals.judges.base_judge import BaseLLMJudge
 from k_steering.utils.constants import TONE_DESCRIPTIONS, TONE_JUDGE_SYSTEM_PROMPT
 
 class ToneJudge(BaseLLMJudge):
