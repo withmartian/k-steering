@@ -366,26 +366,26 @@ class ActivationSteering(ABC, PushToHubMixin):
             )
 
         # Get effective steering parameters
-        strength = steering_strength or self.steering_config.steering_strength
-        target_layers = layers or self.steering_config.steer_layers
-        layer_str = layer_strengths or self.steering_config.layer_strengths
-        target_lbls = target_labels or self.steering_config.target_labels
-        avoid_lbls = avoid_labels or self.steering_config.avoid_labels
+        self.steering_strength = steering_strength or self.steering_config.steering_strength
+        self.target_layers = layers or self.steering_config.steer_layers
+        self.layer_strengths = layer_strengths or self.steering_config.layer_strengths
+        self.target_lbls = target_labels or self.steering_config.target_labels
+        self.avoid_lbls = avoid_labels or self.steering_config.avoid_labels
 
         # Prepare generation
-        gen_kwargs = self._prepare_generation_kwargs(
+        self.gen_kwargs = self._prepare_generation_kwargs(
             max_new_tokens=max_new_tokens, **generation_kwargs
         )
 
         # Subclass-specific steering implementation
         output = self._generate_with_steering(
             input_prompts=input_prompts,
-            steering_strength = strength,
-            target_labels=target_lbls,
-            avoid_labels=avoid_lbls,
-            target_layers=target_layers,
-            layer_strengths=layer_str,
-            generation_kwargs=gen_kwargs
+            steering_strength = self.steering_strength,
+            target_labels=self.target_lbls,
+            avoid_labels=self.avoid_lbls,
+            target_layers=self.target_layers,
+            layer_strengths=self.layer_strengths,
+            generation_kwargs=self.gen_kwargs
         )
 
         if return_dict:

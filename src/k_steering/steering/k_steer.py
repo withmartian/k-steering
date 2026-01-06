@@ -8,6 +8,8 @@ from src.k_steering.steering.trainer import ActivationSteeringTrainer
 from src.k_steering.steering.config import SteeringConfig, TrainerConfig
 from src.k_steering.utils.data import load_task
 from src.k_steering.utils.model import get_transformer_layers
+from src.k_steering.utils.sweep import is_ood, calibrate_alpha_ood_only
+from src.k_steering.evals.judges.base_judge import BaseLLMJudge
 
 
 class KSteering(ActivationSteering):
@@ -245,6 +247,36 @@ class KSteering(ActivationSteering):
         print(f"Loading Task: {task_name}")
         dataset, unique_labels, eval_prompts = load_task(task_name)
         return dataset, unique_labels, eval_prompts
+    
+    
+    async def sweep_alpha(self, input_prompts, judge: BaseLLMJudge) -> Dict[Any, List]:
+        
+        layer_wise_alpha = {}
+        
+        for layer_idx in self.target_layers:
+            
+            async def _ood_steer(alpha: float):
+                gens = await self._generate_with_steering(input_prompts=input_prompts,
+                                                            steering_strength = alpha,
+                                                            target_labels = self.target_lbls,
+                                                            avoid_labels = self.avoid_lbls,
+                                                            target_layers= [layer_idx],
+                                                            layer_strengths = [alpha],
+                                                            generation_kwargs =self.gen_kwargs)
+                return await is_ood(gens, judge=judge)
+            
+            optim_alpha = await calibrate_alpha_ood_only(_ood_steer)
+            layer_wise_alpha[layer_idx] = optim_alpha
+        
+        return layer_wise_alpha
+            
+            
+            
+            
+        
+        
+        
+        
         
         
         
