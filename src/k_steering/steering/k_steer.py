@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import os
+import logging
 from typing import Optional, Dict, Any, List, Tuple, Union
 
 from src.k_steering.steering.base import ActivationSteering
@@ -8,7 +10,7 @@ from src.k_steering.steering.trainer import ActivationSteeringTrainer
 from src.k_steering.steering.config import SteeringConfig, TrainerConfig
 from src.k_steering.utils.data import load_task
 from src.k_steering.utils.model import get_transformer_layers
-
+_LOGGER = logging.getLogger(__name__)
 
 class KSteering(ActivationSteering):
     """
@@ -41,6 +43,17 @@ class KSteering(ActivationSteering):
             device: Device to use
         """
         super().__init__(model_name, steering_config,trainer_config, device)
+        if not self.logger:
+            self.logger = _LOGGER
+            logging.basicConfig(level=logging.INFO)
+            output_dir = self.steering_config.output_dir if self.steering_config.output_dir else "./outputs"
+            os.makedirs(output_dir, exist_ok=True)
+            file_handler = logging.FileHandler(
+                os.path.join(output_dir, "steering_log.log")
+            )
+            file_handler.setLevel(logging.INFO)
+            self.logger.addHandler(file_handler)
+            self.logger.setLevel(logging.INFO)
         
     def build_steering_trainer(
         self, eval: bool = False
@@ -196,9 +209,9 @@ class KSteering(ActivationSteering):
         avoid_idx = None
         if avoid_labels:
             avoid_idx = [self.tone2idx[t] for t in avoid_labels]
-            print(f"Generating Output for {target_labels} target labels and {avoid_labels} avoid labels")
+            self.logger.info(f"Generating Output for {target_labels} target labels and {avoid_labels} avoid labels")
         else:
-            print(f"Generating Output for {target_labels} target labels")
+            self.logger.info(f"Generating Output for {target_labels} target labels")
             
         for layer_idx in target_layers:
             if layer_idx < self.model.config.num_hidden_layers:
@@ -242,7 +255,7 @@ class KSteering(ActivationSteering):
         Returns:
             Tuple of (dataset, unique_labels, eval_prompts)
         """
-        print(f"Loading Task: {task_name}")
+        self.logger.info(f"Loading Task: {task_name}")
         dataset, unique_labels, eval_prompts = load_task(task_name)
         return dataset, unique_labels, eval_prompts
         

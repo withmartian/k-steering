@@ -1,16 +1,18 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import os
 from typing import Optional, Dict, Any, List, Tuple, Union
 from collections import defaultdict
 from sklearn.model_selection import train_test_split
-
+import logging
 from src.k_steering.steering.base import ActivationSteering
 from src.k_steering.steering.trainer import ActivationSteeringTrainer
 from src.k_steering.steering.config import SteeringConfig, TrainerConfig
 from src.k_steering.utils.data import load_task
 from src.k_steering.utils.model import get_transformer_layers
 from src.k_steering.utils.constants import DEBATE_DESCRIPTIONS, TONE_DESCRIPTIONS
+_LOGGER = logging.getLogger(__name__)
 
 
 class CAASteering(ActivationSteering):
@@ -45,6 +47,17 @@ class CAASteering(ActivationSteering):
         """
         super().__init__(model_name, steering_config,trainer_config, device)
         self.cache = defaultdict(dict)
+        if not self.logger:
+            self.logger = _LOGGER
+            logging.basicConfig(level=logging.INFO)
+            output_dir = self.steering_config.output_dir if self.steering_config.output_dir else "./outputs"
+            os.makedirs(output_dir, exist_ok=True)
+            file_handler = logging.FileHandler(
+                os.path.join(output_dir, "steering_log.log")
+            )
+            file_handler.setLevel(logging.INFO)
+            self.logger.addHandler(file_handler)
+            self.logger.setLevel(logging.INFO)
         
     def format_prompt(self,prompts, style: str=None):
         
@@ -106,7 +119,7 @@ class CAASteering(ActivationSteering):
                         }
         
         # Cache hidden states
-        print(f"Caching hidden states for {all_neutral_prompts.keys()} neutral prompt style...")
+        self.logger.info(f"Caching hidden states for {all_neutral_prompts.keys()} neutral prompt style...")
         self.cache['neutral'] = self.get_hidden_cache(all_neutral_prompts, batch_size=batch_size)
         
         for style in self.style_instructions.keys():
@@ -122,15 +135,15 @@ class CAASteering(ActivationSteering):
 
         
         
-            print(f"Caching hidden states for {all_formatted_prompts.keys()} in {style} prompt style...")
+            self.logger.info(f"Caching hidden states for {all_formatted_prompts.keys()} in {style} prompt style...")
             self.cache[style] = self.get_hidden_cache(all_formatted_prompts, batch_size=batch_size)
 
         # Build classifier/steering vectors
-        print("Building Steering Trainer...")
+        self.logger.info("Building Steering Trainer...")
         self.build_steering_trainer(eval=False)
         self._is_fitted = True
 
-        print("Training complete!")
+        self.logger.info("Training complete!")
         return self
     
     def get_hidden_cache(
@@ -425,7 +438,7 @@ class CAASteering(ActivationSteering):
         Returns:
             Tuple of (dataset, unique_labels, eval_prompts)
         """
-        print(f"Loading Task: {task_name}")
+        self.logger.info(f"Loading Task: {task_name}")
         dataset, unique_labels, eval_prompts = load_task(task_name)
         return dataset, unique_labels, eval_prompts
     
