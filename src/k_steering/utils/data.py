@@ -25,6 +25,8 @@ def load_task(task: str):
                     }
                 )
         eval_prompts = list(ds["text"])
+        
+        # TODO: Remove max_samples code later
         max_samples = 10
         return dataset[:max_samples], unique_labels, eval_prompts[:max_samples]
     if task == "debates":
@@ -44,6 +46,8 @@ def load_task(task: str):
                     }
                 )
         eval_prompts = list(ds["text"])
+        
+        # TODO: Remove max_samples code later
         max_samples = 10
         return dataset[:max_samples], unique_labels, eval_prompts[:max_samples]
     raise ValueError(f"Unknown task {task}")
