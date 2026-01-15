@@ -13,7 +13,8 @@ async def is_ood(
     score_thresh: float = 50.0,
     verbose: bool = False,
 ) -> bool:
-    scores = await asyncio.gather(*[judge.judge(generation=t) for t in texts])
+    print(f"Evaluating Generated responses using {judge.judge_name}")
+    scores = await judge.evaluate_batch(generations=texts)
     scores = np.array([0.0 if s is None else float(s) for s in scores])
     bad = scores < score_thresh
     frac_bad = 100.0 * bad.mean()
@@ -35,6 +36,7 @@ async def calibrate_alpha_ood_only(
     lo, hi = min_alpha, max_alpha
     last_good = min_alpha
     for _ in range(max_iters):
+        print(f"Parameter Sweep Iteration No: {_}")
         if hi / lo <= 1 + tol:
             break
         mid = (lo + hi) / 2

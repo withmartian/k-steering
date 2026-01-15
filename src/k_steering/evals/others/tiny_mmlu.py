@@ -1,6 +1,6 @@
 import json
 import re
-from k_steering.evals.others.base_eval import BaseEvaluator
+from src.k_steering.evals.others.base_eval import BaseEvaluator
 from datasets import load_dataset
 
 class TinyMMLUEvaluator(BaseEvaluator):

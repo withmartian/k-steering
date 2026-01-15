@@ -369,8 +369,8 @@ class ActivationSteering(ABC, PushToHubMixin):
         self.steering_strength = steering_strength or self.steering_config.steering_strength
         self.target_layers = layers or self.steering_config.steer_layers
         self.layer_strengths = layer_strengths or self.steering_config.layer_strengths
-        self.target_lbls = target_labels or self.steering_config.target_labels
-        self.avoid_lbls = avoid_labels or self.steering_config.avoid_labels
+        self.target_lbls = target_labels
+        self.avoid_lbls = avoid_labels
 
         # Prepare generation
         self.gen_kwargs = self._prepare_generation_kwargs(

@@ -44,7 +44,8 @@ def load_task(task: str):
                     }
                 )
         eval_prompts = list(ds["text"])
-        return dataset, unique_labels, eval_prompts
+        max_samples = 10
+        return dataset[:max_samples], unique_labels, eval_prompts[:max_samples]
     raise ValueError(f"Unknown task {task}")
 
 

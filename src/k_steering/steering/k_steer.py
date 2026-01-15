@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import asyncio
 from typing import Optional, Dict, Any, List, Tuple, Union
 
 from src.k_steering.steering.base import ActivationSteering
@@ -208,10 +209,13 @@ class KSteering(ActivationSteering):
                     make_hook(layer_idx, target_idx, avoid_idx)
                 )
                 hooks.append(handle)
+                
+        input_prompts = input_prompts[:2]
         
         try:
             # Generate with steering
-            inputs = self.tokenizer(input_prompts, return_tensors="pt").to(self.device)
+            print(f"Tokenizing {len(input_prompts)} examples")
+            inputs = self.tokenizer(input_prompts, return_tensors="pt", padding=True).to(self.device)
             
             # with torch.no_grad():
             outputs = self.model.generate(**inputs, **generation_kwargs)
@@ -221,8 +225,11 @@ class KSteering(ActivationSteering):
                 skip_special_tokens=True
             ) for output in outputs]
             
+            print("Generation Completed!!")
+            
         finally:
             # Remove hooks
+            print("Removing Hooks")
             for handle in hooks:
                 handle.remove()
         
@@ -249,20 +256,51 @@ class KSteering(ActivationSteering):
         return dataset, unique_labels, eval_prompts
     
     
-    async def sweep_alpha(self, input_prompts, judge: BaseLLMJudge) -> Dict[Any, List]:
+    async def sweep_alpha(self, judge: BaseLLMJudge,
+                          target_labels: Optional[List[str]] = None,
+                          avoid_labels: Optional[List[str]] = None,
+                          task: Optional[str] = None,
+                          dataset: Optional[Any] = None,
+                          eval_prompts: Optional[List[str]] = None,
+                          max_new_tokens: int = 100,
+                          **generation_kwargs) -> Dict[Any, List]:
+        
+        # if task is not None:
+        #     self.dataset, self.unique_labels, self.eval_prompts = self._load_task(task)
+        # elif dataset is not None:
+        #     self.dataset = dataset
+        #     self.unique_labels = self._extract_labels(dataset)
+        #     self.eval_prompts = eval_prompts or []
+        # else:
+        #     raise ValueError("Either 'task' or 'dataset' must be provided")
+        
+        # self.tone2idx = {t: i for i, t in enumerate(self.unique_labels)}
+        self.gen_semaphore = asyncio.Semaphore(1)
+        
+        input_prompts = self._get_prompts_from_dataset(self.dataset)
+        
+        self.gen_kwargs = self._prepare_generation_kwargs(
+            max_new_tokens=max_new_tokens, **generation_kwargs
+        )
         
         layer_wise_alpha = {}
         
-        for layer_idx in self.target_layers:
-            
+        for layer_idx in self.steering_config.steer_layers:
+            print(f"Calibrating Alpha for Layer: {layer_idx} ")
             async def _ood_steer(alpha: float):
-                gens = await self._generate_with_steering(input_prompts=input_prompts,
-                                                            steering_strength = alpha,
-                                                            target_labels = self.target_lbls,
-                                                            avoid_labels = self.avoid_lbls,
-                                                            target_layers= [layer_idx],
-                                                            layer_strengths = [alpha],
-                                                            generation_kwargs =self.gen_kwargs)
+                async with self.gen_semaphore:
+                    
+                    gens = self._generate_with_steering(
+                        input_prompts=input_prompts,
+                        steering_strength=alpha,
+                        target_labels=target_labels,
+                        avoid_labels=avoid_labels,
+                        target_layers=[layer_idx],
+                        layer_strengths={layer_idx: alpha},
+                        generation_kwargs=self.gen_kwargs,
+                    )
+
+                # Only the judge call is async-parallel
                 return await is_ood(gens, judge=judge)
             
             optim_alpha = await calibrate_alpha_ood_only(_ood_steer)
