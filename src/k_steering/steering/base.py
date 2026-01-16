@@ -71,6 +71,8 @@ class ActivationSteering(ABC, PushToHubMixin):
             f"  - Model: {self.model_name}\n"
             f"  - Device: {self.device}\n"
             f"  - Status: {status}\n"
+            f"  - Steering Config: {self.steering_config}\n"
+            f"  - Trainer Config: {self.trainer_config}\n"
         )
         
 
