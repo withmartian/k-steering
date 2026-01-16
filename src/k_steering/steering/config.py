@@ -12,6 +12,7 @@ class SteeringConfig:
         eval_layer: Optional[int] = None,
         steer_layers: Optional[List[int]] = None,
         layer_strengths: Optional[Dict[int, float]] = None,
+        pos: Optional[int] = None,
         **kwargs
     ):
         self.steering_strength = steering_strength
@@ -19,6 +20,7 @@ class SteeringConfig:
         self.train_layer = train_layer
         self.steer_layers = steer_layers
         self.layer_strengths = layer_strengths or {}
+        self.pos = pos
         self.extra_config = kwargs
 
     def to_dict(self) -> Dict[str, Any]:
@@ -28,6 +30,7 @@ class SteeringConfig:
             'train_layer':self.train_layer,
             'steer_layers': self.steer_layers,
             'layer_strengths': self.layer_strengths,
+            'pos': self.pos,
             **self.extra_config
         }
 

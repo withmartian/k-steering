@@ -181,7 +181,7 @@ class KSteering(ActivationSteering):
                                                    avoid_idx=avoid_idx,
                                                    steering_strength=strength,
                                                    rest=rest)
-                    return (steered,) + output[1:]
+                    return steered
                 else:
                     rest = None
                     return self._apply_steering(hidden_states=output,
