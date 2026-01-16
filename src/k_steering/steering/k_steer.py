@@ -39,9 +39,10 @@ class KSteering(ActivationSteering):
         Initialize K-Linear Steering class
         
         Args:
-            model_name: HuggingFace model name
-            steering_config: Steering configuration
-            device: Device to use
+            model_name (str): HuggingFace model name or path
+            steering_config (SteeringConfig): Configuration for steering behavior
+            trainer_config (TrainerConfig): Configuration for training classifier
+            device (str): Device to load model on (auto-detected if None)
         """
         super().__init__(model_name, steering_config,trainer_config, device)
         
@@ -52,8 +53,8 @@ class KSteering(ActivationSteering):
         Build steering classifier/vectors from cached activations
 
         Args:
-            cache: Cached hidden states
-            eval: Whether to build evaluation classifier
+            cache (dict): Cached hidden states
+            eval (bool): Whether to build evaluation classifier
 
         Returns:
             Classifier/steering vectors (subclass-specific)
@@ -76,6 +77,16 @@ class KSteering(ActivationSteering):
         self.k_clf.fit(X_layer,self.get_one_hot(y_layer, len(self.unique_labels)), epochs=1, batch_size=64)
 
     def get_one_hot(self, indices: np.ndarray, num_classes: int) -> np.ndarray:
+        """
+        Get One hot encoded array for unique classes
+
+        Args:
+            indices (np.ndarray): Input array containing labels
+            num_classes (int): Number of classes
+
+        Returns:
+            np.ndarray: One hot encoded array
+        """
         out = np.zeros((len(indices), num_classes), dtype=np.float32)
         out[np.arange(len(indices)), indices] = 1.0
         return out
@@ -94,12 +105,12 @@ class KSteering(ActivationSteering):
         Apply K-steering to hidden states
         
         Args:
-            hidden_states: Original hidden states [batch, seq_len, hidden_dim]
-            layer_idx: Current layer index
-            steering_strength: Strength multiplier
+            hidden_states (torch.Tensor): Original hidden states [batch, seq_len, hidden_dim]
+            layer_idx (int): Current layer index
+            steering_strength (float): Strength multiplier
             
         Returns:
-            Steered hidden states
+            torch.Tensor: Steered hidden states
         """
         if avoid_idx is None:
             avoid_idx = []
@@ -154,14 +165,16 @@ class KSteering(ActivationSteering):
         Generate text with K-steering applied
         
         Args:
-            input_prompts: Input text
-            steering_strength: Global steering strength
-            target_layers: Layers to steer
-            layer_strengths: Per-layer strengths
-            generation_kwargs: Generation parameters
+            input_prompt (List[str]): Input text
+            steering_strength (float): Global steering strength
+            target_labels (List[str]): Labels for steering behaviour towards
+            avoid_labels (List[str]): Labels for steering behaviour away from 
+            target_layers (List[str]): Layers to apply steering
+            layer_strengths (Dict[int, float]): Layer-specific strengths
+            generation_kwargs (Dict[str, Any]): Generation parameters
             
         Returns:
-            Generation results dictionary
+            Dict[str, Any]: Generation results dictionary
         """
         
         # Hook to apply steering during generation
@@ -246,10 +259,10 @@ class KSteering(ActivationSteering):
         Load predefined task dataset
 
         Args:
-            task_name: Name of task to load
+            task_name (str): Name of task to load
 
         Returns:
-            Tuple of (dataset, unique_labels, eval_prompts)
+            Tuple[Any, List[str], List[str]]: Tuple of (dataset, unique_labels, eval_prompts)
         """
         print(f"Loading Task: {task_name}")
         dataset, unique_labels, eval_prompts = load_task(task_name)
@@ -259,22 +272,21 @@ class KSteering(ActivationSteering):
     async def sweep_alpha(self, judge: BaseLLMJudge,
                           target_labels: Optional[List[str]] = None,
                           avoid_labels: Optional[List[str]] = None,
-                          task: Optional[str] = None,
-                          dataset: Optional[Any] = None,
-                          eval_prompts: Optional[List[str]] = None,
                           max_new_tokens: int = 100,
                           **generation_kwargs) -> Dict[Any, List]:
         
-        # if task is not None:
-        #     self.dataset, self.unique_labels, self.eval_prompts = self._load_task(task)
-        # elif dataset is not None:
-        #     self.dataset = dataset
-        #     self.unique_labels = self._extract_labels(dataset)
-        #     self.eval_prompts = eval_prompts or []
-        # else:
-        #     raise ValueError("Either 'task' or 'dataset' must be provided")
+        """
+        Parameter Sweep Feature for calibrating optimal values of alpha / steering strength
         
-        # self.tone2idx = {t: i for i, t in enumerate(self.unique_labels)}
+        Args:
+            judge (BaseLLMJudge): LLM Judge object for evaluating the coherence of the output
+            target_labels (List): Labels for steering behaviour towards
+            avoid_labels (List): Labels for steering behaviour away from 
+            max_new_tokens (int) : Maximum new tokens to be generated by the LLM
+
+        Returns:
+            Dict[Any, List]: Layer Wise alpha/steering strength dictionary
+        """
         self.gen_semaphore = asyncio.Semaphore(1)
         
         input_prompts = self._get_prompts_from_dataset(self.dataset)
