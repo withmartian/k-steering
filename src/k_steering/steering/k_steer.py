@@ -155,10 +155,10 @@ class KSteering(ActivationSteering):
         input_prompts: List[str],
         steering_strength: float,
         target_labels: List[str],
-        avoid_labels: Optional[List[str]],
-        target_layers: Optional[List[int]],
         layer_strengths: Dict[int, float],
-        generation_kwargs: Dict[str, Any]
+        generation_kwargs: Dict[str, Any],
+        avoid_labels: Optional[List[str]]=None,
+        target_layers: Optional[List[int]]=None,
     ) -> Dict[str, Any]:
         """
         Generate text with K-steering applied
