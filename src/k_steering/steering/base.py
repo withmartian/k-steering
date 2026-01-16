@@ -1,3 +1,4 @@
+import os
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List, Tuple, Union
 from pathlib import Path
@@ -596,18 +597,27 @@ class ActivationSteering(ABC, PushToHubMixin):
             vec_path = model_path / f"{filename}_vectors.pt"
 
         # ---------- load metadata ----------
-        with open(metadata_path, "r") as f:
-            metadata = json.load(f)
+        try:
+            with open(metadata_path, "r") as f:
+                metadata = json.load(f)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"File {metadata_path} not found. Error: {e}")
 
         # ---------- load steering config ----------
-        with open(steering_config_path, "r") as f:
-            steering_config_dict = json.load(f)
-        steering_config = SteeringConfig.from_dict(steering_config_dict)
+        try:
+            with open(steering_config_path, "r") as f:
+                steering_config_dict = json.load(f)
+            steering_config = SteeringConfig.from_dict(steering_config_dict)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"File {steering_config_path} not found. Error: {e}")
 
         # ---------- load trainer config ----------
-        with open(trainer_config_path, "r") as f:
-            trainer_config_dict = json.load(f)
-        trainer_config = TrainerConfig.from_dict(trainer_config_dict)
+        try:
+            with open(trainer_config_path, "r") as f:
+                trainer_config_dict = json.load(f)
+            trainer_config = TrainerConfig.from_dict(trainer_config_dict)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"File {trainer_config_path} not found. Error: {e}")
 
         # ---------- initialize instance ----------
         instance = cls(metadata["model_name"], steering_config, trainer_config)
@@ -620,15 +630,19 @@ class ActivationSteering(ABC, PushToHubMixin):
         try:
             with open(clf_path, "rb") as f:
                 instance.k_clf = pickle.load(f)
+        except (pickle.UnpicklingError, EOFError, AttributeError, ImportError, IndexError) as e:
+            print(f"Error unpickling data: {e}")
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"File {clf_path} not found.")
         except UnboundLocalError as e:
-            pass
+            raise UnboundLocalError(f"{e}")
     
         # ---------- load steering vectors ----------
         # if vec_path.exists():
         try:
             instance.steering_vectors = torch.load(vec_path, map_location="cpu")
-        except UnboundLocalError as e:
-            pass
+        except Exception as e:
+            raise Exception(f"RAISED {type(e).__name__}: {e}")
 
         print(
             f"Model loaded from "
