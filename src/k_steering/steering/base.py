@@ -62,6 +62,17 @@ class ActivationSteering(ABC, PushToHubMixin):
         # Steering components (subclass-specific)
         self.steering_vectors = {}
         self.k_clf = None
+        
+    def __str__(self) -> str:
+        status = "Fitted" if self._is_fitted else "Not Fitted"
+        
+        return (
+            f"{self.__class__.__name__} Summary:\n"
+            f"  - Model: {self.model_name}\n"
+            f"  - Device: {self.device}\n"
+            f"  - Status: {status}\n"
+        )
+        
 
     def _load_hf_model(
         self, model_name: str
@@ -475,7 +486,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         push_to_hub: bool = False,
         repo_id: Optional[str] = None,
         commit_message: str = "Add steering model artifacts",
-        private: Optional[bool] = None,
+        private: Optional[bool] = True,
     ) -> None:
         """
         Save steering model to disk
