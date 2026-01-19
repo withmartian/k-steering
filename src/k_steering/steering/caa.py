@@ -290,14 +290,10 @@ class CAASteering(ActivationSteering):
         self, eval: bool = False
     ):
         """
-        Build steering classifier/vectors from cached activations
-
-        Args:
-            cache: Cached hidden states
-            eval: Whether to build evaluation classifier
+        Build CAA steering vectors from cached activations
 
         Returns:
-            Classifier/steering vectors (subclass-specific)
+            CAA Steering vectors (subclass-specific)
         """
         # if not eval:
         split_name = "train"
@@ -329,15 +325,27 @@ class CAASteering(ActivationSteering):
         step_size_decay: float = 1.0,
     ) -> torch.Tensor:
         """
-        Apply CAA-steering to hidden states
+        
         
         Args:
-            hidden_states: Original hidden states [batch, seq_len, hidden_dim]
+            hidden_states: 
             layer_idx: Current layer index
-            steering_strength: Strength multiplier
+            steering_strength: 
             
         Returns:
             Steered hidden states
+        """
+        """
+        Apply CAA-steering to hidden states
+
+        Args:
+            hidden_states (torch.Tensor): Original hidden states [batch, seq_len, hidden_dim]
+            target_labels (List[str]): 
+            steering_strength (float, optional): Steering Strength multiplier / Alpha. Defaults to None.
+            avoid_labels (List[str] | None, optional): 
+
+        Returns:
+            torch.Tensor: Modified Hidden Activation after applying CAA Steering Vectors
         """
         
         if isinstance(hidden_states, np.ndarray):
@@ -373,7 +381,7 @@ class CAASteering(ActivationSteering):
         generation_kwargs: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Generate text with K-steering applied
+        
         
         Args:
             input_prompts: Input text
@@ -384,6 +392,21 @@ class CAASteering(ActivationSteering):
             
         Returns:
             Generation results dictionary
+        """
+        """
+        Generate text with CAA-steering applied
+
+        Args:
+            input_prompts (List[str]): Input Text
+            steering_strength (float): Default Global Steering Strength
+            target_labels (List[str]): Labels for steering behaviour towards
+            avoid_labels (Optional[List[str]]): Labels for steering behaviour away from
+            target_layers (Optional[List[int]]): Target Layers for applying steering
+            layer_strengths (Dict[int, float]): Layer wise steering strength
+            generation_kwargs (Dict[str, Any]): Misc Generation arguments
+
+        Returns:
+            Dict[str, Any]: Generated Text post steering along with metadata.
         """
         
         # Hook to apply steering during generation
@@ -453,16 +476,25 @@ class CAASteering(ActivationSteering):
         Load predefined task dataset
 
         Args:
-            task_name: Name of task to load
+            task_name (str): Name of task to load
 
         Returns:
-            Tuple of (dataset, unique_labels, eval_prompts)
+            Tuple[Any, List[str], List[str]]: Tuple of (dataset, unique_labels, eval_prompts)
         """
         print(f"Loading Task: {task_name}")
         dataset, unique_labels, eval_prompts = load_task(task_name)
         return dataset, unique_labels, eval_prompts
     
-    def _make_hooks(self, layers):
+    def _make_hooks(self, layers: list) -> Tuple[Dict,List]:
+        """
+        Creating Hooks for collecting hidden cache
+
+        Args:
+            layers (list): List of Layers on which hooks are applied
+
+        Returns:
+            Tuple[Dict,List]: Activation Dictionary and list of hooks.
+        """
         acts = defaultdict(list)
         handles = []
 
