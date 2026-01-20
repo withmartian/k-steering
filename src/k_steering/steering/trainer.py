@@ -16,12 +16,12 @@ class MultiLabelSteeringModel(nn.Module):
         hidden_dim: int,
         num_labels: int,
         *,
-        linear: bool = False,
+        type: str = "mlp",
     ) -> None:
         super().__init__()
-        if linear:
+        if type == "linear":
             self.net = nn.Linear(input_dim, num_labels)
-        else:
+        elif type == "mlp":
             self.net = nn.Sequential(
                 nn.Linear(input_dim, hidden_dim),
                 nn.ReLU(),
@@ -29,6 +29,8 @@ class MultiLabelSteeringModel(nn.Module):
                 nn.ReLU(),
                 nn.Linear(hidden_dim, num_labels),
             )
+        else:
+            raise NotImplementedError("Specify type values as `linear` or `mlp`.")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net(x)
@@ -39,7 +41,10 @@ class ActivationSteeringTrainer:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.trainer_config = trainer_config
         self.classifier = MultiLabelSteeringModel(
-            self.trainer_config.input_dim, self.trainer_config.hidden_dim, self.trainer_config.num_labels
+            self.trainer_config.input_dim, 
+            self.trainer_config.hidden_dim, 
+            self.trainer_config.num_labels, 
+            self.trainer_config.type
         ).to(self.device)
         self.optimizer = optim.Adam(self.classifier.parameters(), lr=self.trainer_config.lr)
         self.loss_fn = nn.BCEWithLogitsLoss()
