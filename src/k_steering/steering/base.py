@@ -2,8 +2,10 @@ import os
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List, Tuple, Union
 from pathlib import Path
+import os
 import json
 import torch
+import logging
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.utils import PushToHubMixin
 import pickle
@@ -12,6 +14,7 @@ from huggingface_hub import hf_hub_download
 
 from src.k_steering.steering.dataset import TaskDataset
 from src.k_steering.steering.config import SteeringConfig, TrainerConfig
+_LOGGER = logging.getLogger(__name__)
 
 
 class ActivationSteering(ABC, PushToHubMixin):
@@ -45,11 +48,26 @@ class ActivationSteering(ABC, PushToHubMixin):
             trainer_config (TrainerConfig): Configuration for training classifier
             device (str): Device to load model on (auto-detected if None)
         """
+        
         self.model_name = model_name
         self.steering_config = steering_config or SteeringConfig()
         self.trainer_config = trainer_config or TrainerConfig()
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
+
+        # Setup logging
+        self.logger = _LOGGER
+        logging.basicConfig(level=logging.INFO)
+        output_dir = self.steering_config.output_dir if self.steering_config.output_dir else "./outputs"
+        os.makedirs(output_dir, exist_ok=True)
+        file_handler = logging.FileHandler(
+            os.path.join(output_dir, "steering_log.log")
+        )
+        file_handler.setLevel(logging.INFO)
+        self.logger.addHandler(file_handler)
+        self.logger.setLevel(logging.INFO)
+        
+        
         # Load model and tokenizer
         self.model, self.tokenizer = self._load_hf_model(model_name)
 
@@ -89,7 +107,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         Returns:
             Tuple of (model, tokenizer)
         """
-        print(f"Loading Model: {model_name} from HuggingFace")
+        self.logger.info(f"Loading Model: {model_name} from HuggingFace")
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
@@ -331,15 +349,15 @@ class ActivationSteering(ABC, PushToHubMixin):
                         }
 
         # Cache hidden states
-        print(f"Caching hidden states for {all_prompts.keys()} prompt splits...")
+        self.logger.info(f"Caching hidden states for {all_prompts.keys()} prompt splits...")
         self.cache = self.get_hidden_cache(all_prompts, batch_size=batch_size)
 
         # Build classifier/steering vectors
-        print("Building Steering Trainer...")
+        self.logger.info("Building Steering Trainer...")
         self.build_steering_trainer(eval=False)
         self._is_fitted = True
 
-        print("Training complete!")
+        self.logger.info("Training complete!")
         return self
 
     def _get_prompts_from_dataset(self, dataset: Any) -> List[str]:
@@ -547,7 +565,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         with open(metadata_path, "w") as f:
             json.dump(metadata, f, indent=2)
 
-        print(f"Model saved to {model_path / filename}")
+        self.logger.info(f"Model saved to {model_path / filename}")
 
         if push_to_hub:
             self.push_to_hub(
@@ -672,7 +690,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         except Exception as e:
             raise Exception(f"RAISED {type(e).__name__}: {e}")
 
-        print(
+        self.logger.info(
             f"Model loaded from "
             f"{repo_id if repo_id is not None else metadata_path.parent}"
         )
