@@ -50,14 +50,14 @@ class TrainerConfig:
         input_dim: int=None,
         num_labels: int=None,
         hidden_dim: int = 128,
-        type: str = "mlp",
+        clf_type: str = "mlp",
         lr: float = 1e-3,
         **kwargs
     ):
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.num_labels = num_labels
-        self.type = type
+        self.clf_type = clf_type
         self.lr = lr
         self.extra_config = kwargs
 
@@ -66,7 +66,7 @@ class TrainerConfig:
             'input_dim': self.input_dim,
             'hidden_dim': self.hidden_dim,
             'num_labels': self.num_labels,
-            'type': self.type,
+            'clf_type': self.clf_type,
             'lr': self.lr,
             **self.extra_config
         }

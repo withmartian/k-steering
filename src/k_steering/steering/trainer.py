@@ -15,13 +15,12 @@ class MultiLabelSteeringModel(nn.Module):
         input_dim: int,
         hidden_dim: int,
         num_labels: int,
-        *,
-        type: str = "mlp",
+        clf_type: str = "mlp",
     ) -> None:
         super().__init__()
-        if type == "linear":
+        if clf_type == "linear":
             self.net = nn.Linear(input_dim, num_labels)
-        elif type == "mlp":
+        elif clf_type == "mlp":
             self.net = nn.Sequential(
                 nn.Linear(input_dim, hidden_dim),
                 nn.ReLU(),
@@ -44,7 +43,7 @@ class ActivationSteeringTrainer:
             self.trainer_config.input_dim, 
             self.trainer_config.hidden_dim, 
             self.trainer_config.num_labels, 
-            self.trainer_config.type
+            self.trainer_config.clf_type
         ).to(self.device)
         self.optimizer = optim.Adam(self.classifier.parameters(), lr=self.trainer_config.lr)
         self.loss_fn = nn.BCEWithLogitsLoss()
