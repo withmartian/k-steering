@@ -1,6 +1,6 @@
 from typing import Dict
-from k_steering.evals.judges.base_judge import BaseLLMJudge
-from k_steering.utils.constants import TONE_DESCRIPTIONS, TONE_JUDGE_SYSTEM_PROMPT
+from src.k_steering.evals.judges.base_judge import BaseLLMJudge
+from src.k_steering.utils.constants import TONE_DESCRIPTIONS, TONE_JUDGE_SYSTEM_PROMPT
 
 class ToneJudge(BaseLLMJudge):
     
@@ -15,6 +15,7 @@ class ToneJudge(BaseLLMJudge):
             model_name: Judge Model Name
         """
         super().__init__(model_name)
+        self.judge_name = "ToneJudge"
         self.task = "tones"
         self.system_prompt = TONE_JUDGE_SYSTEM_PROMPT
         self.style_descriptions = TONE_DESCRIPTIONS

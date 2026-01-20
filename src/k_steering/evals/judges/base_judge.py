@@ -4,8 +4,8 @@ from typing import Dict, List, Optional, Type
 from jinja2 import Template
 from pydantic import BaseModel
 
-from k_steering.utils.io import openai_api_call, anthropic_api_call
-from k_steering.utils.prompt_templates import AVOID_AND_TOWARDS_EVALUATION_PROMPT_TEMPLATE_STR, AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR
+from src.k_steering.utils.io import openai_api_call, anthropic_api_call
+from src.k_steering.utils.prompt_templates import AVOID_AND_TOWARDS_EVALUATION_PROMPT_TEMPLATE_STR, AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR
 
 class BaseLLMJudge(ABC):
     """
@@ -21,6 +21,7 @@ class BaseLLMJudge(ABC):
 
     def __init__(self, model_name: str = "gpt-4o-mini"):
         self.model_name = model_name
+        self.judge_name = "BaseLLMJudge"
 
         # Must be set by subclasses
         self.task: Optional[str] = None
@@ -142,8 +143,9 @@ class BaseLLMJudge(ABC):
     def _run_model(
         self,
         prompt: str,
-        response_format: Type[BaseModel],
+        response_format: Type[BaseModel]=None,
         max_tokens: int = 1024,
+        mode: str = "json"
     ) -> str:
         if "gpt" in self.model_name:
             api_fn = openai_api_call
@@ -158,6 +160,7 @@ class BaseLLMJudge(ABC):
             system_prompt=self.system_prompt,
             model=self.model_name,
             max_tokens=max_tokens,
+            mode = mode
         )
 
     def _postprocess_result(self, parsed_output: Dict) -> Dict:

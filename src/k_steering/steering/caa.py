@@ -22,10 +22,10 @@ class CAASteering(ActivationSteering):
     
     Example:
         >>> config = SteeringConfig(steering_strength=1.5, layers=[10, 15, 20])
-        >>> k_steer = CAASteering("gpt2", config)
-        >>> k_steer.fit(task="tones")
-        >>> output = k_steer.get_steered_output("Hello, how are you?")
-        >>> k_steer.save("./models", "my_steering_model")
+        >>> caa_steer = CAASteering("gpt2", config)
+        >>> caa_steer.fit(task="tones")
+        >>> output = caa_steer.get_steered_output("Hello, how are you?")
+        >>> caa_steer.save("./models", "my_steering_model")
     """
     
     def __init__(
@@ -39,14 +39,25 @@ class CAASteering(ActivationSteering):
         Initialize K-Linear Steering class
         
         Args:
-            model_name: HuggingFace model name
-            steering_config: Steering configuration
-            device: Device to use
+            model_name (str): HuggingFace model name or path
+            steering_config (SteeringConfig): Configuration for steering behavior
+            trainer_config (TrainerConfig): Configuration for training classifier
+            device (str): Device to load model on (auto-detected if None)
         """
-        super().__init__(model_name, steering_config,trainer_config, device)
+        super().__init__(model_name, steering_config, trainer_config, device)
         self.cache = defaultdict(dict)
         
-    def format_prompt(self,prompts, style: str=None):
+    def format_prompt(self,prompts: List[str], style: str=None) -> List[str]:
+        """
+        Formatting Prompt for the task specific style
+
+        Args:
+            prompts (List(str)): List of Prompts to be formatted
+            style (str, optional): Task Specific Style ID. Defaults to None, no formatting is applied then.
+        
+        Returns:
+            List[str]: List of formatted prompts
+        """
         
         def get_formatted(example):
             instruction = self.style_instructions[style] if style else ""
@@ -62,17 +73,31 @@ class CAASteering(ActivationSteering):
         batch_size: int = 64,
         style_instructions: Dict = None
     ) -> "ActivationSteering":
+        
         """
-        Fit the steering model on a task or dataset
+        
 
         Args:
-            task: Name of predefined task
+            task: 
             dataset: Custom dataset
             eval_prompts: Optional evaluation prompts
             batch_size: Batch size for caching
 
         Returns:
             self for method chaining
+        """
+        """
+        Fit the steering model on a task or dataset
+
+        Args:
+            task (Optional[str], optional): Name of predefined task. Defaults to None.
+            dataset (Optional[Any], optional): Custom Dataset for Text Generation. Defaults to None.
+            batch_size (int, optional): Batch size for caching. Defaults to 64.
+            style_instructions (Dict, optional): Style Instructions ID. Defaults to None.
+
+        Raises:
+            ValueError: "Either 'task' or 'dataset' must be provided"
+            ValueError: "'style_instructions' must be provided"
         """
         # Load data
         if task is not None:
@@ -87,7 +112,7 @@ class CAASteering(ActivationSteering):
             self.style_instructions = TONE_DESCRIPTIONS
         elif task == "debates":
             self.style_instructions = {key: DEBATE_DESCRIPTIONS[key] for key in DEBATE_DESCRIPTIONS.keys() if key in ['Empirical Grounding','Straw Man Reframing']}
-        elif style_instructions:
+        elif style_instructions is not None:
             self.style_instructions = style_instructions
         else:
             raise ValueError("'style_instructions' must be provided")
@@ -139,23 +164,21 @@ class CAASteering(ActivationSteering):
         batch_size: int = 64,
     ) -> Dict[str, Dict[Union[int, str], torch.Tensor]]:
         """
-        Get cached hidden states for multiple named prompt splits.
+        Get cached hidden activations for multiple named prompt splits.
 
         Args:
-            prompts: Dict mapping split name -> list of prompts
-            batch_size: Batch size for processing
-            return_attention_mask: Whether to include attention masks
+            prompts (Dict[str, List[str]]): Dict mapping split name -> list of prompts
+            batch_size (int): Batch size for cache processing
 
         Returns:
-            {
-            split_name: {
-                layer_idx: Tensor [B, T, D],
-                ...
-                "attention_mask": Tensor [B, T]
-            }
-            }
+            Dict[str, Dict[Union[int, str], torch.Tensor]]: {
+                                                                split_name: {
+                                                                    layer_idx: Tensor [B, T, D],
+                                                                    ...
+                                                                    "attention_mask": Tensor [B, T]
+                                                                }
+                                                            }
         """
-        
         num_layers = self.model.config.num_hidden_layers
         all_caches: Dict[str, Dict[Union[int, str], torch.Tensor]] = {}
 
@@ -206,11 +229,21 @@ class CAASteering(ActivationSteering):
         use_cached: bool = True,
     ) -> torch.Tensor:
         """
-        Extract the last non-padding token representation for a given
-        layer and named split.
+        Extract the Pre Residual Activations of a given layer.
+
+        Args:
+            style (str): Prompt Style (Neutral or a Behaviour/Task Specific)
+            split_name (str): Split name to select train or eval Prompts
+            layer_idx (int): Layer ID for which hidden activations needs to be extracted
+            pos (int, optional): Token Position for which hidden activations needs to be extracted. Defaults to -1.
+            act_type (str, optional): Type of Layer Activation to be extracted. Defaults to "resid_pre".
+            prompts (Optional[Dict[str, List[str]]], optional): External Prompts Dataset, needed only if cache is not defined. Defaults to None.
+            batch_size (int, optional): Batch Size for cache calculation. Defaults to 64.
+            use_cached (bool, optional): Boolean flag whether to use cache or not. Defaults to True.
+
 
         Returns:
-            Tensor of shape [num_prompts, hidden_dim]
+            torch.Tensor: Hidden Activations for specified layer_idx and pos.
         """
         # ---------- ensure cache for split exists ----------
         if (
@@ -245,7 +278,7 @@ class CAASteering(ActivationSteering):
         
         split_cache = self.cache[style][split_name]
         acts = (
-                    split_cache[('resid_pre', layer_idx)][:, pos, :]
+                    split_cache[(act_type, layer_idx)][:, pos, :]
                     .detach()
                     .cpu()
                     .numpy()
@@ -257,14 +290,10 @@ class CAASteering(ActivationSteering):
         self, eval: bool = False
     ):
         """
-        Build steering classifier/vectors from cached activations
-
-        Args:
-            cache: Cached hidden states
-            eval: Whether to build evaluation classifier
+        Build CAA steering vectors from cached activations
 
         Returns:
-            Classifier/steering vectors (subclass-specific)
+            CAA Steering vectors (subclass-specific)
         """
         # if not eval:
         split_name = "train"
@@ -296,15 +325,27 @@ class CAASteering(ActivationSteering):
         step_size_decay: float = 1.0,
     ) -> torch.Tensor:
         """
-        Apply CAA-steering to hidden states
+        
         
         Args:
-            hidden_states: Original hidden states [batch, seq_len, hidden_dim]
+            hidden_states: 
             layer_idx: Current layer index
-            steering_strength: Strength multiplier
+            steering_strength: 
             
         Returns:
             Steered hidden states
+        """
+        """
+        Apply CAA-steering to hidden states
+
+        Args:
+            hidden_states (torch.Tensor): Original hidden states [batch, seq_len, hidden_dim]
+            target_labels (List[str]): 
+            steering_strength (float, optional): Steering Strength multiplier / Alpha. Defaults to None.
+            avoid_labels (List[str] | None, optional): 
+
+        Returns:
+            torch.Tensor: Modified Hidden Activation after applying CAA Steering Vectors
         """
         
         if isinstance(hidden_states, np.ndarray):
@@ -340,7 +381,7 @@ class CAASteering(ActivationSteering):
         generation_kwargs: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Generate text with K-steering applied
+        
         
         Args:
             input_prompts: Input text
@@ -351,6 +392,21 @@ class CAASteering(ActivationSteering):
             
         Returns:
             Generation results dictionary
+        """
+        """
+        Generate text with CAA-steering applied
+
+        Args:
+            input_prompts (List[str]): Input Text
+            steering_strength (float): Default Global Steering Strength
+            target_labels (List[str]): Labels for steering behaviour towards
+            avoid_labels (Optional[List[str]]): Labels for steering behaviour away from
+            target_layers (Optional[List[int]]): Target Layers for applying steering
+            layer_strengths (Dict[int, float]): Layer wise steering strength
+            generation_kwargs (Dict[str, Any]): Misc Generation arguments
+
+        Returns:
+            Dict[str, Any]: Generated Text post steering along with metadata.
         """
         
         # Hook to apply steering during generation
@@ -420,16 +476,25 @@ class CAASteering(ActivationSteering):
         Load predefined task dataset
 
         Args:
-            task_name: Name of task to load
+            task_name (str): Name of task to load
 
         Returns:
-            Tuple of (dataset, unique_labels, eval_prompts)
+            Tuple[Any, List[str], List[str]]: Tuple of (dataset, unique_labels, eval_prompts)
         """
         print(f"Loading Task: {task_name}")
         dataset, unique_labels, eval_prompts = load_task(task_name)
         return dataset, unique_labels, eval_prompts
     
-    def _make_hooks(self, layers):
+    def _make_hooks(self, layers: list) -> Tuple[Dict,List]:
+        """
+        Creating Hooks for collecting hidden cache
+
+        Args:
+            layers (list): List of Layers on which hooks are applied
+
+        Returns:
+            Tuple[Dict,List]: Activation Dictionary and list of hooks.
+        """
         acts = defaultdict(list)
         handles = []
 
