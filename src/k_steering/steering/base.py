@@ -43,9 +43,10 @@ class ActivationSteering(ABC, PushToHubMixin):
         Initialize activation steering base
 
         Args:
-            model_name: HuggingFace model name or path
-            steering_config: Configuration for steering behavior
-            device: Device to load model on (auto-detected if None)
+            model_name (str): HuggingFace model name or path
+            steering_config (SteeringConfig): Configuration for steering behavior
+            trainer_config (TrainerConfig): Configuration for training classifier
+            device (str): Device to load model on (auto-detected if None)
         """
         
         self.model_name = model_name
@@ -101,7 +102,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         Load HuggingFace model and tokenizer
 
         Args:
-            model_name: Model identifier
+            model_name (str): Huggingface Model identifier
 
         Returns:
             Tuple of (model, tokenizer)
@@ -128,7 +129,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         Load predefined task dataset
 
         Args:
-            task_name: Name of task to load
+            task_name (str): Name of Predefined task to load
 
         Returns:
             Tuple of (dataset, unique_labels, eval_prompts)
@@ -144,7 +145,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         Extract unique labels from dataset
 
         Args:
-            dataset: Dataset object
+            dataset (Any): Dataset object
 
         Returns:
             List of unique label strings
@@ -165,9 +166,9 @@ class ActivationSteering(ABC, PushToHubMixin):
         Get cached hidden states for multiple named prompt splits.
 
         Args:
-            prompts: Dict mapping split name -> list of prompts
-            batch_size: Batch size for processing
-            return_attention_mask: Whether to include attention masks
+            prompts (Dict): Dict mapping split name -> list of prompts
+            batch_size (int): Batch size for processing
+            return_attention_mask (bool): Whether to include attention masks
 
         Returns:
             {
@@ -229,6 +230,13 @@ class ActivationSteering(ABC, PushToHubMixin):
         """
         Extract the last non-padding token representation for a given
         layer and named split.
+        
+        Args:
+            split_name (str): Split Name for prompt type
+            layer_idx (int) : Layer ID for layer wise cache
+            prompts (Dict) : Dict of Prompts with Named Splits (only when cache is not defined)
+            batch_size (int) : Batch Size for generating cache
+            use_cache (bool): Boolean for using existing cache or not
 
         Returns:
             Tensor of shape [num_prompts, hidden_dim]
@@ -276,8 +284,8 @@ class ActivationSteering(ABC, PushToHubMixin):
         Build steering classifier/vectors from cached activations
 
         Args:
-            cache: Cached hidden states
-            eval: Whether to build evaluation classifier
+            cache (dict): Cached hidden states
+            eval (bool): Whether to build evaluation classifier
 
         Returns:
             Classifier/steering vectors (subclass-specific)
@@ -292,12 +300,12 @@ class ActivationSteering(ABC, PushToHubMixin):
         Apply steering to hidden states at a specific layer
 
         Args:
-            hidden_states: Original hidden states
-            layer_idx: Current layer index
-            steering_strength: Strength of steering
+            hidden_states (torch.Tensor): Original hidden states
+            layer_idx (int): Current layer index
+            steering_strength (float): Strength of steering
 
         Returns:
-            Modified hidden states
+            torch.Tensor: Modified hidden states
         """
         pass
 
@@ -312,10 +320,10 @@ class ActivationSteering(ABC, PushToHubMixin):
         Fit the steering model on a task or dataset
 
         Args:
-            task: Name of predefined task
-            dataset: Custom dataset
-            eval_prompts: Optional evaluation prompts
-            batch_size: Batch size for caching
+            task (str): Name of predefined task
+            dataset (Any): Custom dataset
+            eval_prompts (list): Optional evaluation prompts
+            batch_size (int): Batch size for caching
 
         Returns:
             self for method chaining
@@ -357,7 +365,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         Extract prompts from dataset
 
         Args:
-            dataset: Dataset object
+            dataset (Any): Dataset object
 
         Returns:
             List of prompt strings
@@ -383,12 +391,14 @@ class ActivationSteering(ABC, PushToHubMixin):
         Generate steered output for input prompt
 
         Args:
-            input_prompt: Input text
-            steering_strength: Override default strength
-            layers: Override target layers
-            layer_strengths: Layer-specific strengths
-            max_new_tokens: Maximum tokens to generate
-            return_dict: Return full output dictionary
+            input_prompt (list): Input text
+            steering_strength (float): Override default strength
+            layers (list): Override target layers
+            target_labels (list): Labels for steering behaviour towards
+            avoid_labels (list): Labels for steering behaviour away from 
+            layer_strengths (dict): Layer-specific strengths
+            max_new_tokens (int): Maximum tokens to generate
+            return_dict (bool): Return full output dictionary
             **generation_kwargs: Additional generation parameters
 
         Returns:
@@ -400,26 +410,26 @@ class ActivationSteering(ABC, PushToHubMixin):
             )
 
         # Get effective steering parameters
-        strength = steering_strength or self.steering_config.steering_strength
-        target_layers = layers or self.steering_config.steer_layers
-        layer_str = layer_strengths or self.steering_config.layer_strengths
-        target_lbls = target_labels or self.steering_config.target_labels
-        avoid_lbls = avoid_labels or self.steering_config.avoid_labels
+        self.steering_strength = steering_strength or self.steering_config.steering_strength
+        self.target_layers = layers or self.steering_config.steer_layers
+        self.layer_strengths = layer_strengths or self.steering_config.layer_strengths
+        self.target_lbls = target_labels
+        self.avoid_lbls = avoid_labels
 
         # Prepare generation
-        gen_kwargs = self._prepare_generation_kwargs(
+        self.gen_kwargs = self._prepare_generation_kwargs(
             max_new_tokens=max_new_tokens, **generation_kwargs
         )
 
         # Subclass-specific steering implementation
         output = self._generate_with_steering(
             input_prompts=input_prompts,
-            steering_strength = strength,
-            target_labels=target_lbls,
-            avoid_labels=avoid_lbls,
-            target_layers=target_layers,
-            layer_strengths=layer_str,
-            generation_kwargs=gen_kwargs
+            steering_strength = self.steering_strength,
+            target_labels=self.target_lbls,
+            avoid_labels=self.avoid_lbls,
+            target_layers=self.target_layers,
+            layer_strengths=self.layer_strengths,
+            generation_kwargs=self.gen_kwargs
         )
 
         if return_dict:
@@ -438,10 +448,10 @@ class ActivationSteering(ABC, PushToHubMixin):
         Prepare generation keyword arguments
 
         Args:
-            max_new_tokens: Maximum tokens to generate
-            temperature: Sampling temperature
-            top_p: Nucleus sampling parameter
-            do_sample: Whether to use sampling
+            max_new_tokens (int): Maximum tokens to generate
+            temperature (float): Sampling temperature
+            top_p (float): Nucleus sampling parameter
+            do_sample (bool): Whether to use sampling
             **kwargs: Additional generation parameters
 
         Returns:
@@ -472,10 +482,12 @@ class ActivationSteering(ABC, PushToHubMixin):
         Generate text with steering applied (base implementation)
 
         Args:
-            input_prompt: Input text
-            steering_strength: Global steering strength
-            target_layers: Layers to apply steering
-            layer_strengths: Layer-specific strengths
+            input_prompt (str): Input text
+            steering_strength (float): Global steering strength
+            target_labels (list): Labels for steering behaviour towards
+            avoid_labels (list): Labels for steering behaviour away from 
+            target_layers (list): Layers to apply steering
+            layer_strengths (dict): Layer-specific strengths
             generation_kwargs: Generation parameters
 
         Returns:
@@ -509,12 +521,15 @@ class ActivationSteering(ABC, PushToHubMixin):
         private: Optional[bool] = True,
     ) -> None:
         """
-        Save steering model to disk
+        Save steering model to Disk or Huggingface
 
         Args:
-            model_path: Directory to save
-            filename: Base filename
-            save_model: Whether to save full model (expensive)
+            model_path (str): Directory to save
+            filename (str): Base filename
+            push_to_hub (bool): Boolean flag if model is to be saved on Hugginface
+            repo_id (str) : Hugginface repository id for model 
+            commit_message (str): Commit Message for Hugginface
+            private (bool): Boolean flag for pushing to a private huggingface repository
         """
         model_path = Path(model_path)
         model_path.mkdir(parents=True, exist_ok=True)
@@ -589,10 +604,10 @@ class ActivationSteering(ABC, PushToHubMixin):
         Load steering model from local disk or Hugging Face Hub.
 
         Args:
-            model_path: Local directory OR cache dir for HF download
-            filename: Base filename
-            repo_id: Hugging Face repo id (if loading from hub)
-            revision: Branch / tag / commit
+            model_path (str): Local directory OR cache dir for HF download
+            filename (str): Base filename
+            repo_id (str): Hugging Face repo id (if loading from hub)
+            revision (str): Branch / tag / commit
         """
         # ---------- resolve files ----------
         if repo_id is not None:
