@@ -688,7 +688,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         except Exception as e:
             raise Exception(f"RAISED {type(e).__name__}: {e}")
 
-        self.logger.info(
+        cls.logger.info(
             f"Model loaded from "
             f"{repo_id if repo_id is not None else metadata_path.parent}"
         )
@@ -699,7 +699,7 @@ class ActivationSteering(ABC, PushToHubMixin):
             f"{self.__class__.__name__}("
             f"model_name='{self.model_name}', "
             f"fitted={self._is_fitted}, "
-            f"steering_strength={self.config.steering_strength})"
+            f"steering_strength={self.steering_config.steering_strength})"
         )
         
 
