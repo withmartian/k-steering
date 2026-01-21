@@ -340,6 +340,8 @@ class ActivationSteering(ABC, PushToHubMixin):
 
         # Prepare prompts
         train_prompts = self._get_prompts_from_dataset(self.dataset)
+        self.logger.info(f"Number of training prompts: {len(train_prompts)}")
+        self.logger.info(f"Number of eval prompts: {len(self.eval_prompts)}")
         self.n_train_prompts = len(train_prompts)
         all_prompts = {
                             "train": train_prompts,
