@@ -223,8 +223,8 @@ class CAASteering(ActivationSteering):
                     
                 for layer in range(num_layers):
                     final_acts[('resid_mid', layer)] = (
-                        final_acts[('resid_pre', layer)] +
-                        final_acts[('attn_out', layer)]
+                        final_acts[('resid_pre', layer)].to(self.device) +
+                        final_acts[('attn_out', layer)].to(self.device)
     )
 
                 all_caches[split_name] = final_acts
