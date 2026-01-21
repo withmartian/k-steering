@@ -238,7 +238,7 @@ class KSteering(ActivationSteering):
                 )
                 hooks.append(handle)
                 
-        input_prompts = input_prompts[:2]
+        # input_prompts = input_prompts[:2]
         
         try:
             # Generate with steering
