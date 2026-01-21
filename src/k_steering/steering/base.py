@@ -191,7 +191,7 @@ class ActivationSteering(ABC, PushToHubMixin):
                     inputs = self.tokenizer(
                         batch,
                         return_tensors="pt",
-                        padding=True,
+                        padding="max_length",
                         truncation=True,
                     ).to(self.device)
 
