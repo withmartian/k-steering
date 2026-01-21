@@ -185,7 +185,6 @@ class ActivationSteering(ABC, PushToHubMixin):
             for split_name, split_prompts in prompts.items():
                 cache = {i: [] for i in range(num_layers + 1)}
                 attention_masks = [] if return_attention_mask else None
-                batch_size = 2
                 for i in range(0, len(split_prompts), batch_size):
                     batch = split_prompts[i : i + batch_size]
 
