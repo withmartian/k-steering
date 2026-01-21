@@ -6,6 +6,7 @@ import os
 import json
 import torch
 import logging
+import torch.nn.functional as F
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.utils import PushToHubMixin
 import pickle
@@ -184,7 +185,7 @@ class ActivationSteering(ABC, PushToHubMixin):
             for split_name, split_prompts in prompts.items():
                 cache = {i: [] for i in range(num_layers + 1)}
                 attention_masks = [] if return_attention_mask else None
-
+                batch_size = 2
                 for i in range(0, len(split_prompts), batch_size):
                     batch = split_prompts[i : i + batch_size]
 
@@ -208,10 +209,25 @@ class ActivationSteering(ABC, PushToHubMixin):
                         cache[layer_idx].append(hidden.cpu())
 
                 # concatenate batches
-                cache = {k: torch.cat(v, dim=0) for k, v in cache.items()}
+                # cache = {k: torch.cat(v, dim=0) for k, v in cache.items()}
+                for layer_idx, tensors in cache.items():
+                    # tensors: list of [B, T_i, D]
+                    max_T = max(t.size(1) for t in tensors)
+
+                    padded = [
+                        F.pad(t, (0, 0, 0, max_T - t.size(1)))  # pad dim=1
+                        for t in tensors
+                    ]
+
+                    cache[layer_idx] = torch.cat(padded, dim=0)
 
                 if return_attention_mask:
-                    cache["attention_mask"] = torch.cat(attention_masks, dim=0)
+                    max_att_T = max(t.size(1) for t in attention_masks)
+                    attn_padded = [
+                        F.pad(t, (0, max_att_T - t.size(1)))  # pad dim=1
+                        for t in attention_masks
+                    ]
+                    cache["attention_mask"] = torch.cat(attn_padded, dim=0)
 
                 all_caches[split_name] = cache
 
