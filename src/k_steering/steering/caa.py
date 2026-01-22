@@ -6,12 +6,12 @@ from typing import Optional, Dict, Any, List, Tuple, Union
 from collections import defaultdict
 from sklearn.model_selection import train_test_split
 import logging
-from src.k_steering.steering.base import ActivationSteering
-from src.k_steering.steering.trainer import ActivationSteeringTrainer
-from src.k_steering.steering.config import SteeringConfig, TrainerConfig
-from src.k_steering.utils.data import load_task
-from src.k_steering.utils.model import get_transformer_layers
-from src.k_steering.utils.constants import DEBATE_DESCRIPTIONS, TONE_DESCRIPTIONS
+from k_steering.steering.base import ActivationSteering
+from k_steering.steering.trainer import ActivationSteeringTrainer
+from k_steering.steering.config import SteeringConfig, TrainerConfig
+from k_steering.utils.data import load_task
+from k_steering.utils.model import get_transformer_layers
+from k_steering.utils.constants import DEBATE_DESCRIPTIONS, TONE_DESCRIPTIONS
 _LOGGER = logging.getLogger(__name__)
 
 

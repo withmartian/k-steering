@@ -1,6 +1,6 @@
 from typing import Dict
-from src.k_steering.evals.judges.base_judge import BaseLLMJudge
-from src.k_steering.utils.constants import DEBATE_DESCRIPTIONS, DEBATE_JUDGE_SYSTEM_PROMPT
+from k_steering.evals.judges.base_judge import BaseLLMJudge
+from k_steering.utils.constants import DEBATE_DESCRIPTIONS, DEBATE_JUDGE_SYSTEM_PROMPT
 
 class DebateJudge(BaseLLMJudge):
     

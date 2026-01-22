@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "shreyansjainn", email = "jshrey8@gmail.com" }
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "anthropic>=0.76.0",
     "datasets==4.1.1",
@@ -39,3 +39,6 @@ dependencies = [
 [build-system]
 requires = ["uv_build>=0.9.16,<0.10.0"]
 build-backend = "uv_build"
+
+[tool.uv.build]
+packages = ["src/k_steering"]

@@ -1,6 +1,6 @@
 from k_steering.evals.others.base_eval import BaseEvaluator
 from datasets import load_dataset
-from src.k_steering.evals.judges.alpaca_judge import AlpacaJudge
+from k_steering.evals.judges.alpaca_judge import AlpacaJudge
 
 
 class TinyAlpacaEvaluator(BaseEvaluator):

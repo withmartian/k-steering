@@ -12,7 +12,7 @@ from transformers.utils import PushToHubMixin
 import pickle
 from collections import defaultdict
 from huggingface_hub import hf_hub_download
-from src.k_steering.steering.config import SteeringConfig, TrainerConfig
+from k_steering.steering.config import SteeringConfig, TrainerConfig
 _LOGGER = logging.getLogger(__name__)
 
 

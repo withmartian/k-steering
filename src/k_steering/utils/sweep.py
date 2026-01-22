@@ -2,7 +2,7 @@ from typing import List, Callable
 import asyncio
 import numpy as np
 
-from src.k_steering.evals.judges.base_judge import BaseLLMJudge
+from k_steering.evals.judges.base_judge import BaseLLMJudge
 
 
 async def is_ood(

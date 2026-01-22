@@ -5,8 +5,8 @@ from typing import Dict, List, Optional, Type
 from jinja2 import Template
 from pydantic import BaseModel
 import asyncio
-from src.k_steering.evals.judges.base_judge import BaseLLMJudge
-from src.k_steering.utils.constants import OOD_JUDGE_SYSTEM_PROMPT
+from k_steering.evals.judges.base_judge import BaseLLMJudge
+from k_steering.utils.constants import OOD_JUDGE_SYSTEM_PROMPT
 
 class OODJudge(BaseLLMJudge):
     

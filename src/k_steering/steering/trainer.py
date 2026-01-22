@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from src.k_steering.steering.config import TrainerConfig
+from k_steering.steering.config import TrainerConfig
 
 
 class MultiLabelSteeringModel(nn.Module):

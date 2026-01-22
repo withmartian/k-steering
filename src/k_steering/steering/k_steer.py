@@ -7,13 +7,13 @@ import asyncio
 
 from typing import Optional, Dict, Any, List, Tuple, Union
 
-from src.k_steering.steering.base import ActivationSteering
-from src.k_steering.steering.trainer import ActivationSteeringTrainer
-from src.k_steering.steering.config import SteeringConfig, TrainerConfig
-from src.k_steering.utils.data import load_task
-from src.k_steering.utils.model import get_transformer_layers
-from src.k_steering.utils.sweep import is_ood, calibrate_alpha_ood_only
-from src.k_steering.evals.judges.base_judge import BaseLLMJudge
+from k_steering.steering.base import ActivationSteering
+from k_steering.steering.trainer import ActivationSteeringTrainer
+from k_steering.steering.config import SteeringConfig, TrainerConfig
+from k_steering.utils.data import load_task
+from k_steering.utils.model import get_transformer_layers
+from k_steering.utils.sweep import is_ood, calibrate_alpha_ood_only
+from k_steering.evals.judges.base_judge import BaseLLMJudge
 
 _LOGGER = logging.getLogger(__name__)
 

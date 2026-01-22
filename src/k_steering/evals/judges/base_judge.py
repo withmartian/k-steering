@@ -4,8 +4,8 @@ from typing import Dict, List, Optional, Type
 from jinja2 import Template
 from pydantic import BaseModel
 
-from src.k_steering.utils.io import openai_api_call, anthropic_api_call
-from src.k_steering.utils.prompt_templates import AVOID_AND_TOWARDS_EVALUATION_PROMPT_TEMPLATE_STR, AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR
+from k_steering.utils.io import openai_api_call, anthropic_api_call
+from k_steering.utils.prompt_templates import AVOID_AND_TOWARDS_EVALUATION_PROMPT_TEMPLATE_STR, AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR
 
 class BaseLLMJudge(ABC):
     """

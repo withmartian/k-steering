@@ -54,8 +54,8 @@ This will create the environment and install all required dependencies.
 ### K-Steering (Non-Linear Steering)
 
 ```python
-from src.k_steering.steering.k_steer import KSteering
-from src.k_steering.steering.config import SteeringConfig
+from k_steering.steering.k_steer import KSteering
+from k_steering.steering.config import SteeringConfig
 
 # Initialize LLM for Steering
 model_name = "unsloth/Llama-3.2-1B-Instruct"
@@ -87,8 +87,8 @@ print(output[0])
 K-Steering also includes an implementation of [Contrastive Activation Addition (CAA) paper](https://arxiv.org/abs/2312.06681) for linear steering baselines.
 
 ```python
-from src.k_steering.steering.k_steer import CAASteering
-from src.k_steering.steering.config import SteeringConfig
+from k_steering.steering.k_steer import CAASteering
+from k_steering.steering.config import SteeringConfig
 
 # Initialize LLM for Steering
 model_name = "unsloth/Llama-3.2-1B-Instruct"
