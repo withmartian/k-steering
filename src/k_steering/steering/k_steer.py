@@ -269,7 +269,7 @@ class KSteering(ActivationSteering):
             'layer_strengths': layer_strengths
         }
 
-    def _load_task(self, task_name: str) -> Tuple[Any, List[str], List[str]]:
+    def _load_task(self, task_name: str, max_samples:int = None) -> Tuple[Any, List[str], List[str]]:
         """
         Load predefined task dataset
 
@@ -280,7 +280,7 @@ class KSteering(ActivationSteering):
             Tuple[Any, List[str], List[str]]: Tuple of (dataset, unique_labels, eval_prompts)
         """
         self.logger.info(f"Loading Task: {task_name}")
-        dataset, unique_labels, eval_prompts = load_task(task_name)
+        dataset, unique_labels, eval_prompts = load_task(task_name, max_samples)
         return dataset, unique_labels, eval_prompts
     
     

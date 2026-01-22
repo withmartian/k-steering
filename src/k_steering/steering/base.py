@@ -123,7 +123,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         model.eval()
         return model, tokenizer
 
-    def _load_task(self, task_name: str) -> Tuple[Any, List[str], List[str]]:
+    def _load_task(self, task_name: str, max_samples:int = None) -> Tuple[Any, List[str], List[str]]:
         """
         Load predefined task dataset
 
@@ -328,6 +328,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         dataset: Optional[Any] = None,
         eval_prompts: Optional[List[str]] = None,
         batch_size: int = 64,
+        max_samples: int = None
     ) -> "ActivationSteering":
         """
         Fit the steering model on a task or dataset
@@ -343,7 +344,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         """
         # Load data
         if task is not None:
-            self.dataset, self.unique_labels, self.eval_prompts = self._load_task(task)
+            self.dataset, self.unique_labels, self.eval_prompts = self._load_task(task,max_samples)
         elif dataset is not None:
             self.dataset = dataset
             self.unique_labels = self._extract_labels(dataset)
