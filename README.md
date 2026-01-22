@@ -4,6 +4,11 @@ K-Steering is a steering framework for training and applying non-linear control 
 
 The framework is based on the paper [Beyond Linear Steering: Unified Multi-Attribute Control for Language Models](https://arxiv.org/abs/2505.24535), which introduces Non-Linear K-Steering as a principled alternative to linear combinations of steering vectors for multi-attribute control.
 
+![K-Steering Intro](docs/assets/k_steering_intro.png)
+_Figure 1. An illustration of gradient-based K-Steering. For an activation vector A, we calculate a steering loss that
+penalizes higher logits from a classifier on A for undesired labels and rewards higher logits for desired labels. By
+backpropagating this loss through the classifier, we obtain the steered activations $A' = A − α∆L$_
+
 In addition to K-Steering, the package also includes an implementation of [Contrastive Activation Addition (CAA)](https://arxiv.org/abs/2312.06681) for comparison and baseline steering experiments.
 
 ## Features
