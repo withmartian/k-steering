@@ -124,8 +124,8 @@ class CAASteering(ActivationSteering):
         if task == "tones":
             self.style_instructions = TONE_DESCRIPTIONS
         elif task == "debates":
-            self.style_instructions = {key: DEBATE_DESCRIPTIONS[key] for key in DEBATE_DESCRIPTIONS.keys() if key in ['Empirical Grounding','Straw Man Reframing']}
-            # self.style_instructions = {key: DEBATE_DESCRIPTIONS[key] for key in DEBATE_DESCRIPTIONS.keys()}
+            # self.style_instructions = {key: DEBATE_DESCRIPTIONS[key] for key in DEBATE_DESCRIPTIONS.keys() if key in ['Empirical Grounding','Straw Man Reframing']}
+            self.style_instructions = {key: DEBATE_DESCRIPTIONS[key] for key in DEBATE_DESCRIPTIONS.keys()}
         elif style_instructions is not None:
             self.style_instructions = style_instructions
         else:
