@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import List, Tuple
-
+import random
 from datasets import load_dataset
 
 from .tasks import tones_prompts, debates_prompts
@@ -28,7 +28,8 @@ def load_task(task: str, max_samples: int = None):
         
         # TODO: Remove max_samples code later
         if max_samples:
-            return dataset[:max_samples], unique_labels, eval_prompts[:max_samples]
+            random.seed(42)
+            return random.sample(dataset, max_samples), unique_labels, random.sample(eval_prompts, max_samples)
         return dataset, unique_labels, eval_prompts
     if task == "debates":
         ds = load_dataset("Narmeen07/debate_style_agnostic_questions", split="train")
@@ -50,7 +51,8 @@ def load_task(task: str, max_samples: int = None):
         
         # TODO: Remove max_samples code later
         if max_samples:
-            return dataset[:max_samples], unique_labels, eval_prompts[:max_samples]
+            random.seed(42)
+            return random.sample(dataset, max_samples), unique_labels, random.sample(eval_prompts, max_samples)
         return dataset, unique_labels, eval_prompts
     raise ValueError(f"Unknown task {task}")
 
