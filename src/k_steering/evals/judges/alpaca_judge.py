@@ -14,7 +14,7 @@ class AlpacaJudge(BaseLLMJudge):
         model_name: str = "gpt-4o-mini"
     ):
         """
-        Initialize Tone Judge class
+        Initialize Alpaca Judge class
         
         Args:
             model_name: Judge Model Name

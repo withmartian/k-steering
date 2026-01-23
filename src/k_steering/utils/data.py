@@ -7,7 +7,17 @@ from datasets import load_dataset
 from .tasks import tones_prompts, debates_prompts
 
 
-def load_task(task: str, max_samples: int = None):
+def load_task(task: str, max_samples: int = None) -> Tuple[list, list, list]:
+    """
+    Load Predefined Task
+
+    Args:
+        task (str): Task Name
+        max_samples (int, optional): Max Samples to be sampled (Used for lower memory usage). Defaults to None.
+
+    Returns:
+        Tuple[list, list, list]: Tuple of Train Dataset, Unique Labels and Evaluation Prompts
+    """
     if task == "tones":
         ds = load_dataset("Narmeen07/tone_agnostic_questions", split="train")
         steered_prompts = tones_prompts()

@@ -10,6 +10,9 @@ from k_steering.steering.config import TrainerConfig
 
 
 class MultiLabelSteeringModel(nn.Module):
+    """
+    Class for definining the structure of K-Steering classifier model
+    """
     def __init__(
         self,
         input_dim: int,
@@ -36,6 +39,9 @@ class MultiLabelSteeringModel(nn.Module):
 
 
 class ActivationSteeringTrainer:
+    """
+    Class for training the K-Steering classifier model
+    """
     def __init__(self, trainer_config: TrainerConfig) -> None:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.trainer_config = trainer_config
