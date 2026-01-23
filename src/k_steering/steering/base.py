@@ -124,6 +124,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         model.eval()
         return model, tokenizer
 
+    @abstractmethod
     def _load_task(self, task_name: str, max_samples:int = None) -> tuple[Any, list[str], list[str]]:
         """
         Load predefined task dataset
