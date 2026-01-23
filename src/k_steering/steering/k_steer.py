@@ -1,19 +1,18 @@
-import torch
-import torch.nn as nn
-import numpy as np
-import os
-import logging
 import asyncio
+import logging
+import os
+from typing import Any
 
-from typing import Optional, Dict, Any, List, Tuple, Union
+import numpy as np
+import torch
 
+from k_steering.evals.judges.base_judge import BaseLLMJudge
 from k_steering.steering.base import ActivationSteering
-from k_steering.steering.trainer import ActivationSteeringTrainer
 from k_steering.steering.config import SteeringConfig, TrainerConfig
+from k_steering.steering.trainer import ActivationSteeringTrainer
 from k_steering.utils.data import load_task
 from k_steering.utils.model import get_transformer_layers
-from k_steering.utils.sweep import is_ood, calibrate_alpha_ood_only
-from k_steering.evals.judges.base_judge import BaseLLMJudge
+from k_steering.utils.sweep import calibrate_alpha_ood_only, is_ood
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,9 +34,9 @@ class KSteering(ActivationSteering):
     def __init__(
         self, 
         model_name: str, 
-        steering_config: Optional[SteeringConfig] = None,
-        trainer_config: Optional[TrainerConfig] = None,
-        device: Optional[str] = None
+        steering_config: SteeringConfig | None = None,
+        trainer_config: TrainerConfig | None = None,
+        device: str | None = None
     ):
         """
         Initialize K-Linear Steering class
@@ -109,10 +108,10 @@ class KSteering(ActivationSteering):
     def _apply_steering(
         self,
         hidden_states: torch.Tensor,
-        target_idx: List[int],
+        target_idx: list[int],
         steering_strength: float,
-        rest: Optional[torch.Tensor] = None,
-        avoid_idx: List[int] | None = None,
+        rest: torch.Tensor | None = None,
+        avoid_idx: list[int] | None = None,
         steps: int = 1,
         step_size_decay: float = 1.0,
     ) -> torch.Tensor:
@@ -168,14 +167,14 @@ class KSteering(ActivationSteering):
     
     def _generate_with_steering(
         self,
-        input_prompts: List[str],
+        input_prompts: list[str],
         steering_strength: float,
-        target_labels: List[str],
-        layer_strengths: Dict[int, float],
-        generation_kwargs: Dict[str, Any],
-        avoid_labels: Optional[List[str]]=None,
-        target_layers: Optional[List[int]]=None,
-    ) -> Dict[str, Any]:
+        target_labels: list[str],
+        layer_strengths: dict[int, float],
+        generation_kwargs: dict[str, Any],
+        avoid_labels: list[str] | None=None,
+        target_layers: list[int] | None=None,
+    ) -> dict[str, Any]:
         """
         Generate text with K-steering applied
         
@@ -269,7 +268,7 @@ class KSteering(ActivationSteering):
             'layer_strengths': layer_strengths
         }
 
-    def _load_task(self, task_name: str, max_samples:int = None) -> Tuple[Any, List[str], List[str]]:
+    def _load_task(self, task_name: str, max_samples:int = None) -> tuple[Any, list[str], list[str]]:
         """
         Load predefined task dataset
 
@@ -285,10 +284,10 @@ class KSteering(ActivationSteering):
     
     
     async def sweep_alpha(self, judge: BaseLLMJudge,
-                          target_labels: Optional[List[str]] = None,
-                          avoid_labels: Optional[List[str]] = None,
+                          target_labels: list[str] | None = None,
+                          avoid_labels: list[str] | None = None,
                           max_new_tokens: int = 100,
-                          **generation_kwargs) -> Dict[Any, List]:
+                          **generation_kwargs) -> dict[Any, list]:
         
         """
         Parameter Sweep Feature for calibrating optimal values of alpha / steering strength
@@ -314,7 +313,7 @@ class KSteering(ActivationSteering):
         
         for layer_idx in self.steering_config.steer_layers:
             print(f"Calibrating Alpha for Layer: {layer_idx} ")
-            async def _ood_steer(alpha: float):
+            async def _ood_steer(alpha: float, layer_idx=layer_idx):
                 async with self.gen_semaphore:
                     
                     gens = self._generate_with_steering(

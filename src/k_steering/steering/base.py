@@ -1,18 +1,19 @@
-import os
-from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, List, Tuple, Union
-from pathlib import Path
-import os
 import json
-import torch
 import logging
+import os
+import pickle
+from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Any
+
+import torch
 import torch.nn.functional as F
+from huggingface_hub import hf_hub_download
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.utils import PushToHubMixin
-import pickle
-from collections import defaultdict
-from huggingface_hub import hf_hub_download
+
 from k_steering.steering.config import SteeringConfig, TrainerConfig
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -34,9 +35,9 @@ class ActivationSteering(ABC, PushToHubMixin):
     def __init__(
         self,
         model_name: str,
-        steering_config: Optional[SteeringConfig] = None,
-        trainer_config: Optional[TrainerConfig] = None,
-        device: Optional[str] = None,
+        steering_config: SteeringConfig | None = None,
+        trainer_config: TrainerConfig | None = None,
+        device: str | None = None,
     ):
         """
         Initialize activation steering base
@@ -96,7 +97,7 @@ class ActivationSteering(ABC, PushToHubMixin):
 
     def _load_hf_model(
         self, model_name: str
-    ) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
+    ) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
         """
         Load HuggingFace model and tokenizer
 
@@ -123,7 +124,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         model.eval()
         return model, tokenizer
 
-    def _load_task(self, task_name: str, max_samples:int = None) -> Tuple[Any, List[str], List[str]]:
+    def _load_task(self, task_name: str, max_samples:int = None) -> tuple[Any, list[str], list[str]]:
         """
         Load predefined task dataset
 
@@ -139,7 +140,7 @@ class ActivationSteering(ABC, PushToHubMixin):
             "Override this method or provide custom dataset."
         )
 
-    def _extract_labels(self, dataset: Any) -> List[str]:
+    def _extract_labels(self, dataset: Any) -> list[str]:
         """
         Extract unique labels from dataset
 
@@ -157,10 +158,10 @@ class ActivationSteering(ABC, PushToHubMixin):
 
     def get_hidden_cache(
         self,
-        prompts: Dict[str, List[str]],  # e.g. {"train": [...], "eval": [...]}
+        prompts: dict[str, list[str]],  # e.g. {"train": [...], "eval": [...]}
         batch_size: int = 64,
         return_attention_mask: bool = True,
-    ) -> Dict[str, Dict[Union[int, str], torch.Tensor]]:
+    ) -> dict[str, dict[int | str, torch.Tensor]]:
         """
         Get cached hidden states for multiple named prompt splits.
 
@@ -179,7 +180,7 @@ class ActivationSteering(ABC, PushToHubMixin):
             }
         """
         num_layers = self.model.config.num_hidden_layers
-        all_caches: Dict[str, Dict[Union[int, str], torch.Tensor]] = {}
+        all_caches: dict[str, dict[int | str, torch.Tensor]] = {}
 
         with torch.no_grad():
             for split_name, split_prompts in prompts.items():
@@ -236,7 +237,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         self,
         split_name: str,
         layer_idx: int,
-        prompts: Optional[Dict[str, List[str]]] = None,
+        prompts: dict[str, list[str]] | None = None,
         batch_size: int = 64,
         use_cached: bool = True,
     ) -> torch.Tensor:
@@ -291,7 +292,7 @@ class ActivationSteering(ABC, PushToHubMixin):
 
     @abstractmethod
     def build_steering_trainer(
-        self, cache: Dict[str, torch.Tensor], eval: bool = False
+        self, cache: dict[str, torch.Tensor], eval: bool = False
     ):
         """
         Build steering classifier/vectors from cached activations
@@ -324,9 +325,9 @@ class ActivationSteering(ABC, PushToHubMixin):
 
     def fit(
         self,
-        task: Optional[str] = None,
-        dataset: Optional[Any] = None,
-        eval_prompts: Optional[List[str]] = None,
+        task: str | None = None,
+        dataset: Any | None = None,
+        eval_prompts: list[str] | None = None,
         batch_size: int = 64,
         max_samples: int = None
     ) -> "ActivationSteering":
@@ -376,7 +377,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         self.logger.info("Training complete!")
         return self
 
-    def _get_prompts_from_dataset(self, dataset: Any) -> List[str]:
+    def _get_prompts_from_dataset(self, dataset: Any) -> list[str]:
         """
         Extract prompts from dataset
 
@@ -393,16 +394,16 @@ class ActivationSteering(ABC, PushToHubMixin):
 
     def get_steered_output(
         self,
-        input_prompts: List[str],
-        steering_strength: Optional[float] = None,
-        layers: Optional[List[int]] = None,
-        target_labels: Optional[List[str]] = None,
-        avoid_labels: Optional[List[str]] = None,
-        layer_strengths: Optional[Dict[int, float]] = None,
+        input_prompts: list[str],
+        steering_strength: float | None = None,
+        layers: list[int] | None = None,
+        target_labels: list[str] | None = None,
+        avoid_labels: list[str] | None = None,
+        layer_strengths: dict[int, float] | None = None,
         max_new_tokens: int = 100,
         return_dict: bool = False,
         **generation_kwargs,
-    ) -> Union[str, Dict[str, Any]]:
+    ) -> str | dict[str, Any]:
         """
         Generate steered output for input prompt
 
@@ -459,7 +460,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         top_p: float = 0.9,
         do_sample: bool = True,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Prepare generation keyword arguments
 
@@ -488,12 +489,12 @@ class ActivationSteering(ABC, PushToHubMixin):
         self,
         input_prompt: str,
         steering_strength: float,
-        target_labels: List[str],
-        avoid_labels: Optional[List[str]],
-        target_layers: Optional[List[int]],
-        layer_strengths: Dict[int, float],
-        generation_kwargs: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        target_labels: list[str],
+        avoid_labels: list[str] | None,
+        target_layers: list[int] | None,
+        layer_strengths: dict[int, float],
+        generation_kwargs: dict[str, Any],
+    ) -> dict[str, Any]:
         """
         Generate text with steering applied (base implementation)
 
@@ -528,13 +529,13 @@ class ActivationSteering(ABC, PushToHubMixin):
 
     def save(
         self,
-        model_path: Union[str, Path],
+        model_path: str | Path,
         filename: str,
         *,
         push_to_hub: bool = False,
-        repo_id: Optional[str] = None,
+        repo_id: str | None = None,
         commit_message: str = "Add steering model artifacts",
-        private: Optional[bool] = True,
+        private: bool | None = True,
     ) -> None:
         """
         Save steering model to Disk or Huggingface
@@ -593,7 +594,7 @@ class ActivationSteering(ABC, PushToHubMixin):
 
     def save_pretrained(
         self,
-        save_directory: Union[str, Path],
+        save_directory: str | Path,
         *,
         filename: str = "activation_steering",
         **kwargs,
@@ -610,11 +611,11 @@ class ActivationSteering(ABC, PushToHubMixin):
     @classmethod
     def load(
         cls,
-        model_path: Union[str, Path],
+        model_path: str | Path,
         filename: str,
         *,
-        repo_id: Optional[str] = None,
-        revision: Optional[str] = None,
+        repo_id: str | None = None,
+        revision: str | None = None,
     ) -> "ActivationSteering":
         """
         Load steering model from local disk or Hugging Face Hub.
@@ -643,11 +644,11 @@ class ActivationSteering(ABC, PushToHubMixin):
             trainer_config_path = hf(f"{filename}_trainer_config.json")
             try:
                 clf_path = hf(f"{filename}_classifier.pkl")
-            except Exception as e:
+            except Exception:
                 pass
             try:
                 vec_path = hf(f"{filename}_vectors.pt")
-            except Exception as e:
+            except Exception:
                 pass
 
         else:
@@ -660,26 +661,26 @@ class ActivationSteering(ABC, PushToHubMixin):
 
         # ---------- load metadata ----------
         try:
-            with open(metadata_path, "r") as f:
+            with open(metadata_path) as f:
                 metadata = json.load(f)
         except FileNotFoundError as e:
-            raise FileNotFoundError(f"File {metadata_path} not found. Error: {e}")
+            raise FileNotFoundError(f"File {metadata_path} not found.") from e
 
         # ---------- load steering config ----------
         try:
-            with open(steering_config_path, "r") as f:
+            with open(steering_config_path) as f:
                 steering_config_dict = json.load(f)
             steering_config = SteeringConfig.from_dict(steering_config_dict)
         except FileNotFoundError as e:
-            raise FileNotFoundError(f"File {steering_config_path} not found. Error: {e}")
+            raise FileNotFoundError(f"File {steering_config_path} not found.") from e
 
         # ---------- load trainer config ----------
         try:
-            with open(trainer_config_path, "r") as f:
+            with open(trainer_config_path) as f:
                 trainer_config_dict = json.load(f)
             trainer_config = TrainerConfig.from_dict(trainer_config_dict)
         except FileNotFoundError as e:
-            raise FileNotFoundError(f"File {trainer_config_path} not found. Error: {e}")
+            raise FileNotFoundError(f"File {trainer_config_path} not found.") from e
 
         # ---------- initialize instance ----------
         instance = cls(metadata["model_name"], steering_config, trainer_config)
@@ -695,16 +696,18 @@ class ActivationSteering(ABC, PushToHubMixin):
         except (pickle.UnpicklingError, EOFError, AttributeError, ImportError, IndexError) as e:
             print(f"Error unpickling data: {e}")
         except FileNotFoundError as e:
-            raise FileNotFoundError(f"File {clf_path} not found.")
+            raise FileNotFoundError(f"File {clf_path} not found.") from e
         except UnboundLocalError as e:
-            raise UnboundLocalError(f"{e}")
+            raise UnboundLocalError("Error Loading File") from e
     
         # ---------- load steering vectors ----------
         # if vec_path.exists():
         try:
             instance.steering_vectors = torch.load(vec_path, map_location="cpu")
         except Exception as e:
-            raise Exception(f"RAISED {type(e).__name__}: {e}")
+            raise RuntimeError(
+                                f"Failed to load steering vectors from {vec_path}"
+                                ) from e
 
         cls.logger.info(
             f"Model loaded from "

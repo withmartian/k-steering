@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import List, Tuple
 import random
+
 from datasets import load_dataset
 
-from .tasks import tones_prompts, debates_prompts
+from .tasks import debates_prompts, tones_prompts
 
 
-def load_task(task: str, max_samples: int = None) -> Tuple[list, list, list]:
+def load_task(task: str, max_samples: int = None) -> tuple[list, list, list]:
     """
     Load Predefined Task
 

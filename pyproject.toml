@@ -36,9 +36,46 @@ dependencies = [
     "transformers==4.56.2",
 ]
 
+[dependency-groups]
+dev = [
+    "pyright>=1.1.406",
+    "ruff>=0.14.1",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.25.2",
+]
 [build-system]
 requires = ["uv_build>=0.9.16,<0.10.0"]
 build-backend = "uv_build"
 
 [tool.uv-build]
 packages = ["src/k_steering"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+fix = true
+unsafe-fixes = false
+
+# What to lint
+lint.select = [
+  "E",  # pycodestyle errors
+  "F",  # pyflakes
+  "I",  # isort
+  "B",  # flake8-bugbear
+  "UP", # pyupgrade
+]
+
+lint.ignore = [
+  "E501",  # line length (if handled by formatter)
+]
+
+exclude = [
+  ".venv",
+  "build",
+  "dist",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"

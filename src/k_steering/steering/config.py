@@ -1,5 +1,5 @@
 
-from typing import Optional, Dict, Any, List
+from typing import Any
 
 
 class SteeringConfig:
@@ -7,13 +7,13 @@ class SteeringConfig:
 
     def __init__(
         self,
-        train_layer: Optional[int]=-1,
+        train_layer: int | None=-1,
         steering_strength: float = 1.0,
-        eval_layer: Optional[int] = None,
-        steer_layers: Optional[List[int]] = None,
-        layer_strengths: Optional[Dict[int, float]] = None,
-        output_dir: Optional[str] = None,
-        pos: Optional[int] = None,
+        eval_layer: int | None = None,
+        steer_layers: list[int] | None = None,
+        layer_strengths: dict[int, float] | None = None,
+        output_dir: str | None = None,
+        pos: int | None = None,
         **kwargs
     ):
         self.steering_strength = steering_strength
@@ -25,7 +25,7 @@ class SteeringConfig:
         self.output_dir = output_dir
         self.extra_config = kwargs
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             'steering_strength': self.steering_strength,
             'eval_layer': self.eval_layer,
@@ -38,7 +38,7 @@ class SteeringConfig:
         }
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> 'SteeringConfig':
+    def from_dict(cls, config_dict: dict[str, Any]) -> 'SteeringConfig':
         return cls(**config_dict)
     
 
@@ -61,7 +61,7 @@ class TrainerConfig:
         self.lr = lr
         self.extra_config = kwargs
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             'input_dim': self.input_dim,
             'hidden_dim': self.hidden_dim,
@@ -72,5 +72,5 @@ class TrainerConfig:
         }
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> 'TrainerConfig':
+    def from_dict(cls, config_dict: dict[str, Any]) -> 'TrainerConfig':
         return cls(**config_dict)

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional
+from typing import Any
+
 
 class BaseEvaluator(ABC):
     """
@@ -15,22 +16,22 @@ class BaseEvaluator(ABC):
         self.batch_size = batch_size
 
     @abstractmethod
-    def load_dataset(self) -> List[Dict[str, Any]]:
+    def load_dataset(self) -> list[dict[str, Any]]:
         pass
 
     @abstractmethod
-    def format_prompt(self, example: Dict[str, Any]) -> str:
+    def format_prompt(self, example: dict[str, Any]) -> str:
         pass
 
     @abstractmethod
-    def parse_output(self, output: str, example: Dict[str, Any]) -> Any:
+    def parse_output(self, output: str, example: dict[str, Any]) -> Any:
         pass
 
     @abstractmethod
     def score_prediction(
         self,
         prediction: Any,
-        example: Dict[str, Any],
+        example: dict[str, Any],
     ) -> float:
         pass
 
@@ -40,8 +41,8 @@ class BaseEvaluator(ABC):
         model,
         tokenizer,
         generate_fn,
-        generation_config: Optional[Any] = None,
-    ) -> Dict[str, Any]:
+        generation_config: Any | None = None,
+    ) -> dict[str, Any]:
         dataset = self.load_dataset()
 
         total_score = 0.0
@@ -59,7 +60,7 @@ class BaseEvaluator(ABC):
                 generation_config=generation_config,
             )
 
-            for ex, out in zip(batch, outputs):
+            for ex, out in zip(batch, outputs,strict=True):
                 pred = self.parse_output(out, ex)
                 if pred is None:
                     failures += 1

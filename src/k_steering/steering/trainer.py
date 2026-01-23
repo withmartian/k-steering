@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import List, Optional, Union
 
 import numpy as np
 import torch
@@ -78,9 +77,9 @@ class ActivationSteeringTrainer:
 
     def steer_activations(
         self,
-        acts: Union[np.ndarray, torch.Tensor],
-        target_idx: List[int],
-        avoid_idx: List[int] | None = None,
+        acts: np.ndarray | torch.Tensor,
+        target_idx: list[int],
+        avoid_idx: list[int] | None = None,
         *,
         alpha: float = 1.0,
         steps: int = 1,
@@ -110,8 +109,8 @@ class ActivationSteeringTrainer:
     def _compute_steering_loss(self,
         logits: torch.Tensor,
         *,
-        target_idx: List[int] | torch.Tensor,
-        avoid_idx: List[int] | torch.Tensor,
+        target_idx: list[int] | torch.Tensor,
+        avoid_idx: list[int] | torch.Tensor,
     ) -> torch.Tensor:
         if not torch.is_tensor(target_idx):
             target_idx = torch.as_tensor(target_idx, device=logits.device)

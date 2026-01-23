@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from typing import List, Tuple
 
-
-def tones_prompts() -> List[Tuple[str, str]]:
+def tones_prompts() -> list[tuple[str, str]]:
     return [
         (
             "expert",
@@ -29,7 +27,7 @@ def tones_prompts() -> List[Tuple[str, str]]:
 
 
 
-def debates_prompts() -> List[Tuple[str, str]]:
+def debates_prompts() -> list[tuple[str, str]]:
     return [
         (
             "Reductio ad Absurdum",

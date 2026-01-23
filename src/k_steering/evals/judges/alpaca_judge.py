@@ -1,11 +1,11 @@
-from typing import Dict
-from typing import Dict, List, Optional, Type
+import pandas as pd
 from jinja2 import Template
 from pydantic import BaseModel
-import pandas as pd
+
 from k_steering.evals.judges.base_judge import BaseLLMJudge
 from k_steering.utils.constants import ALPACA_JUDGE_SYSTEM_PROMPT
 from k_steering.utils.prompt_templates import ALPACA_EVAL_PROMPT_TEMPLATE_STR
+
 
 class AlpacaJudge(BaseLLMJudge):
     
@@ -29,9 +29,9 @@ class AlpacaJudge(BaseLLMJudge):
         dataset_instruction: str,
         model_output: str,
         dataset_output: str,
-        response_format: Type[BaseModel],
-        target_style: Optional[str] = None,
-    ) -> Dict:
+        response_format: type[BaseModel],
+        target_style: str | None = None,
+    ) -> dict:
         """
         Evaluate a single (baseline, steered) pair.
         """
@@ -51,11 +51,11 @@ class AlpacaJudge(BaseLLMJudge):
 
     def evaluate_batch(
         self,
-        model_outputs: List[str],
+        model_outputs: list[str],
         benchmark_dataset: pd.DataFrame,
-        response_format: Type[BaseModel],
-        target_style: Optional[str] = None,
-    ) -> Dict:
+        response_format: type[BaseModel],
+        target_style: str | None = None,
+    ) -> dict:
         """
         Evaluate a batch and return aggregate statistics.
         """
@@ -107,7 +107,7 @@ class AlpacaJudge(BaseLLMJudge):
         dataset_instruction: str,
         model_output: str,
         dataset_output: str,
-    ) -> Dict:
+    ) -> dict:
         """
         Default context builder. Subclasses may extend or override.
         """
@@ -119,7 +119,7 @@ class AlpacaJudge(BaseLLMJudge):
 
         return context
     
-    def _aggregate_results(self, results: List[Dict]) -> Dict:
+    def _aggregate_results(self, results: list[dict]) -> dict:
         """
         Default aggregation logic.
         """

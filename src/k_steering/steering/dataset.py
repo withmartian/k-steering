@@ -1,5 +1,5 @@
 
 
 
-class TaskDataset():
+class TaskDataset:
     pass

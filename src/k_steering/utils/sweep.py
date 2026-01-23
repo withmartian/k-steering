@@ -1,12 +1,13 @@
-from typing import List, Callable
 import asyncio
+from collections.abc import Callable
+
 import numpy as np
 
 from k_steering.evals.judges.ood import OODJudge
 
 
 async def is_ood(
-    texts: List[str],
+    texts: list[str],
     *,
     judge: OODJudge,
     frac: float = 5.0,
