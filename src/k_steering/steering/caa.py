@@ -7,9 +7,9 @@ import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 
+from k_steering.data.task_constants import DEBATE_DESCRIPTIONS, TONE_DESCRIPTIONS
 from k_steering.steering.base import ActivationSteering
 from k_steering.steering.config import SteeringConfig, TrainerConfig
-from k_steering.utils.constants import DEBATE_DESCRIPTIONS, TONE_DESCRIPTIONS
 from k_steering.utils.data import load_task
 from k_steering.utils.model import get_transformer_layers
 

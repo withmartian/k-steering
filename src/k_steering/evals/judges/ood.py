@@ -1,7 +1,7 @@
 import asyncio
 
+from k_steering.data.task_constants import OOD_JUDGE_SYSTEM_PROMPT
 from k_steering.evals.judges.base_judge import BaseLLMJudge
-from k_steering.utils.constants import OOD_JUDGE_SYSTEM_PROMPT
 
 
 class OODJudge(BaseLLMJudge):

@@ -3,11 +3,11 @@ import json
 from jinja2 import Template
 from pydantic import BaseModel
 
-from k_steering.utils.io import anthropic_api_call, openai_api_call
-from k_steering.utils.prompt_templates import (
+from k_steering.data.eval_prompt_templates import (
     AVOID_AND_TOWARDS_EVALUATION_PROMPT_TEMPLATE_STR,
     AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR,
 )
+from k_steering.utils.io import anthropic_api_call, openai_api_call
 
 
 class BaseLLMJudge:

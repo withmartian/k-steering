@@ -4,7 +4,7 @@ import random
 
 from datasets import load_dataset
 
-from .tasks import debates_prompts, tones_prompts
+from k_steering.data.task_prompts import debates_prompts, tones_prompts
 
 
 def load_task(task: str, max_samples: int = None) -> tuple[list, list, list]:

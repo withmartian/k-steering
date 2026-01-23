@@ -2,9 +2,9 @@ import pandas as pd
 from jinja2 import Template
 from pydantic import BaseModel
 
+from k_steering.data.eval_prompt_templates import ALPACA_EVAL_PROMPT_TEMPLATE_STR
+from k_steering.data.task_constants import ALPACA_JUDGE_SYSTEM_PROMPT
 from k_steering.evals.judges.base_judge import BaseLLMJudge
-from k_steering.utils.constants import ALPACA_JUDGE_SYSTEM_PROMPT
-from k_steering.utils.prompt_templates import ALPACA_EVAL_PROMPT_TEMPLATE_STR
 
 
 class AlpacaJudge(BaseLLMJudge):
