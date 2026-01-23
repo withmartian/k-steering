@@ -2,7 +2,6 @@ import pytest
 
 from k_steering.utils.model import get_transformer_layers
 
-
 # -------------------------
 # Mock model definitions
 # -------------------------

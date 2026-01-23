@@ -1,7 +1,6 @@
 import pytest
-import numpy as np
 
-from k_steering.utils.sweep import is_ood, calibrate_alpha_ood_only
+from k_steering.utils.sweep import calibrate_alpha_ood_only, is_ood
 
 
 class DummyJudge:
@@ -25,7 +24,7 @@ async def test_is_ood_all_good():
         frac=5.0,
         score_thresh=50.0,
     )
-    assert result == False
+    assert not result
 
 
 @pytest.mark.asyncio
@@ -40,7 +39,7 @@ async def test_is_ood_all_bad():
         score_thresh=50.0,
     )
 
-    assert result == True
+    assert result
 
 
 @pytest.mark.asyncio
@@ -56,7 +55,7 @@ async def test_is_ood_mixed_fraction_boundary():
         score_thresh=50.0,
     )
 
-    assert result == False
+    assert not result
 
 
 @pytest.mark.asyncio
@@ -73,7 +72,7 @@ async def test_is_ood_handles_none_scores():
     )
 
     # 2 / 4 bad = 50%
-    assert result == True
+    assert result
 
 
 @pytest.mark.asyncio
