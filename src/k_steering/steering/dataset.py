@@ -1,18 +1,15 @@
-
-
-
 from dataclasses import dataclass
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Any
 import pandas as pd
 
 
 @dataclass(frozen=True)
 class DatasetSchema:
     prompt_column: str
-    category_columns: List[str]
+    category_columns: list[str]
 
     @property
-    def all_columns(self) -> List[str]:
+    def all_columns(self) -> list[str]:
         return [self.prompt_column, *self.category_columns]
     
 
@@ -145,9 +142,9 @@ class TaskDataset:
         schema: DatasetSchema,
         strict: bool = True,
         cast_to_str: bool = True,
-        orient: Optional[str] = None,
-        record_path: Optional[str] = None,
-        meta: Optional[list[str]] = None,
+        orient: str | None = None,
+        record_path: str | None = None,
+        meta: list[str] | None = None,
         **read_json_kwargs,
     ) -> "TaskDataset":
         """
@@ -225,7 +222,7 @@ class TaskDataset:
         self,
         *,
         question_id_column: str | None = None
-    ) -> Tuple[List[Dict], List[str], List[str]]:
+    ) -> tuple[list[dict], list[str], list[str]]:
         """
         Convert dataset into flattened (prompt, label) examples.
 
@@ -239,8 +236,8 @@ class TaskDataset:
             Unique response category labels.
         """
 
-        examples: List[Dict] = []
-        eval_prompts: List[str] = []
+        examples: list[dict] = []
+        eval_prompts: list[str] = []
         labels = list(self.schema.category_columns)
 
         for idx, row in self.data.iterrows():
@@ -277,7 +274,7 @@ class TaskDataset:
     def __len__(self) -> int:
         return len(self.data)
 
-    def __getitem__(self, idx: int) -> Dict[str, Any]:
+    def __getitem__(self, idx: int) -> dict[str, Any]:
         row = self.data.iloc[idx]
 
         return {

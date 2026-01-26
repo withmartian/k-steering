@@ -1,0 +1,90 @@
+import json
+import pytest
+from pydantic import BaseModel
+from jinja2 import Template
+from k_steering.evals.judges.debate import DebateJudge
+from k_steering.evals.judges.base_judge import BaseLLMJudge
+from k_steering.data.task_constants import (
+    DEBATE_JUDGE_SYSTEM_PROMPT,
+    DEBATE_DESCRIPTIONS,
+)
+from k_steering.data.eval_prompt_templates import (
+    AVOID_AND_TOWARDS_EVALUATION_PROMPT_TEMPLATE_STR,
+    AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR,
+)
+
+class DummyResponse(BaseModel):
+    steering_successful: bool
+    steering_strength: float
+
+
+@pytest.fixture
+def judge():
+    return DebateJudge(model_name="gpt-4o-mini")
+
+
+
+def test_debate_judge_initialization(judge):
+    assert isinstance(judge, BaseLLMJudge)
+    assert judge.judge_name == "DebateJudge"
+
+    assert judge.task == "debates"
+    assert judge.system_prompt == DEBATE_JUDGE_SYSTEM_PROMPT
+    assert judge.style_descriptions == DEBATE_DESCRIPTIONS
+    assert judge.model_name == "gpt-4o-mini"
+
+
+def test_debate_judge_has_required_styles(judge):
+    # Ensures prompt context won't KeyError later
+    assert isinstance(judge.style_descriptions, dict)
+    assert len(judge.style_descriptions) > 0
+
+    for style, desc in judge.style_descriptions.items():
+        assert isinstance(style, str)
+        assert isinstance(desc, str)
+
+
+def test_debate_judge_evaluate_sample(monkeypatch, judge):
+    fake_output = {
+        "steering_successful": True,
+        "steering_strength": 0.6,
+    }
+
+    def fake_run_model(*args, **kwargs):
+        return json.dumps(fake_output)
+
+    monkeypatch.setattr(judge, "_run_model", fake_run_model)
+
+    result = judge.evaluate_sample(
+        baseline_text="Original argument",
+        steered_text="Rewritten argument",
+        avoid_style=list(judge.style_descriptions.keys())[0],
+        response_format=DummyResponse,
+        target_style=None,
+    )
+
+    assert result["steering_successful"] is True
+    assert result["steering_strength"] == 0.6
+
+
+def test_debate_judge_prompt_contains_task_and_styles(judge):
+    avoid_style = list(judge.style_descriptions.keys())[0]
+
+    prompt = judge._create_prompt(
+        baseline_text="Baseline debate text",
+        steered_text="Steered debate text",
+        avoid_style=avoid_style,
+        target_style=None,
+    )
+    
+    context = {
+            "task": judge.task,
+            "baseline_text":"Baseline debate text",
+            "steered_text": "Steered debate text",
+            "avoid_style": avoid_style,
+            "avoid_style_description": judge.style_descriptions[avoid_style]
+        }
+    prompt_template = AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR
+    test_prompt = Template(prompt_template).render(context)
+    
+    assert prompt == test_prompt
