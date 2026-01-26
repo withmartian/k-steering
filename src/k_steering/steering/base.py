@@ -5,7 +5,7 @@ import pickle
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
-
+import random
 import torch
 import torch.nn.functional as F
 from huggingface_hub import hf_hub_download
@@ -348,9 +348,17 @@ class ActivationSteering(ABC, PushToHubMixin):
         if task is not None:
             self.dataset, self.unique_labels, self.eval_prompts = self._load_task(task,max_samples)
         elif dataset is not None:
-            self.dataset = dataset
-            self.unique_labels = self._extract_labels(dataset)
-            self.eval_prompts = eval_prompts or []
+            if max_samples:
+                random.seed(42)
+                self.dataset = random.sample(dataset, max_samples)
+                self.eval_prompts = random.sample(eval_prompts, max_samples) or []
+                self.unique_labels = self._extract_labels(dataset)
+            else:
+                self.dataset = dataset
+                self.unique_labels = self._extract_labels(dataset)
+                self.eval_prompts = eval_prompts or []
+                
+            
         else:
             raise ValueError("Either 'task' or 'dataset' must be provided")
         
