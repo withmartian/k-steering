@@ -40,10 +40,6 @@ class TaskDataset:
 
         self._validate()
 
-    # ---------------------
-    # Construction methods
-    # ---------------------
-
     @classmethod
     def from_dataframe(
         cls,
@@ -198,10 +194,6 @@ class TaskDataset:
         ).to_labeled_examples()
 
 
-    # ---------------------
-    # Validation
-    # ---------------------
-
     def _validate(self) -> None:
         missing = set(self.schema.all_columns) - set(self.data.columns)
         if missing:
@@ -281,9 +273,6 @@ class TaskDataset:
         return examples, eval_prompts
 
 
-    # ---------------------
-    # Dataset interface
-    # ---------------------
 
     def __len__(self) -> int:
         return len(self.data)
