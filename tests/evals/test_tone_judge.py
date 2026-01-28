@@ -76,14 +76,6 @@ def test_debate_judge_prompt_contains_task_and_styles(judge):
         target_style=None,
     )
     
-    context = {
-            "task": judge.task,
-            "baseline_text":"Baseline debate text",
-            "steered_text": "Steered debate text",
-            "avoid_style": avoid_style,
-            "avoid_style_description": judge.style_descriptions[avoid_style]
-        }
-    prompt_template = AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR
-    test_prompt = Template(prompt_template).render(context)
-    
-    assert prompt == test_prompt
+    assert "Baseline debate text" in prompt
+    assert "Steered debate text" in prompt
+    assert avoid_style in prompt

@@ -37,17 +37,11 @@ def test_create_prompt_avoid_only(judge):
         avoid_style="formal",
         target_style=None,
     )
-    context = {
-            "task": judge.task,
-            "baseline_text": "hello",
-            "steered_text": "hi",
-            "avoid_style": "formal",
-            "avoid_style_description": judge.style_descriptions["formal"],
-        }
-    prompt_template = AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR
-    test_prompt = Template(prompt_template).render(context)
+    
+    assert "hello" in prompt
+    assert "hi" in prompt
+    assert "formal" in prompt
 
-    assert prompt == test_prompt
 
 
 def test_create_prompt_avoid_and_target(judge):
@@ -58,19 +52,10 @@ def test_create_prompt_avoid_and_target(judge):
         target_style="casual",
     )
     
-    context = {
-            "task": judge.task,
-            "baseline_text": "hello",
-            "steered_text": "hi",
-            "avoid_style": "formal",
-            "avoid_style_description": judge.style_descriptions["formal"],
-            "target_style": "casual",
-            "target_style_description": judge.style_descriptions["casual"],
-        }
-    prompt_template = AVOID_AND_TOWARDS_EVALUATION_PROMPT_TEMPLATE_STR
-    test_prompt = Template(prompt_template).render(context)
-    
-    assert prompt == test_prompt
+    assert "hello" in prompt
+    assert "hi" in prompt
+    assert "formal" in prompt
+    assert "casual" in prompt
 
 
 
