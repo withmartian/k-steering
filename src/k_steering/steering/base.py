@@ -200,7 +200,7 @@ class ActivationSteering(ABC, PushToHubMixin):
 
                     if return_attention_mask:
                         attention_masks.append(inputs["attention_mask"])
-
+                    print(f"DEBUG: inputs type: {type(inputs)}, inputs: {inputs}")
                     outputs = self.model(
                         **inputs,
                         output_hidden_states=True,
@@ -294,7 +294,7 @@ class ActivationSteering(ABC, PushToHubMixin):
 
     @abstractmethod
     def build_steering_trainer(
-        self, cache: dict[str, torch.Tensor], eval: bool = False
+        self, eval: bool = False
     ):
         """
         Build steering classifier/vectors from cached activations
