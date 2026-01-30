@@ -35,7 +35,6 @@ class FakeBatch(dict):
 @pytest.fixture
 def mock_model_and_tokenizer(monkeypatch):
     # ---- Tokenizer ----
-    # DON'T use MagicMock for tokenizer, use a real class
     class MockTokenizer:
         def __init__(self):
             self.pad_token_id = 0
