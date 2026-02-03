@@ -12,7 +12,7 @@ class DatasetSchema:
     @property
     def all_columns(self) -> list[str]:
         return [self.prompt_column, *self.category_columns]
-    
+
 
 class TaskDataset:
     """
@@ -95,7 +95,7 @@ class TaskDataset:
             schema=schema,
             strict=strict,
         ).to_labeled_examples()
-        
+
     @classmethod
     def from_csv(
         cls,
@@ -191,13 +191,10 @@ class TaskDataset:
             strict=strict,
         ).to_labeled_examples()
 
-
     def _validate(self) -> None:
         missing = set(self.schema.all_columns) - set(self.data.columns)
         if missing:
-            raise ValueError(
-                f"Dataset is missing required columns: {sorted(missing)}"
-            )
+            raise ValueError(f"Dataset is missing required columns: {sorted(missing)}")
 
         if self.strict:
             self._validate_types()
@@ -205,9 +202,7 @@ class TaskDataset:
     def _validate_types(self) -> None:
         for col in self.schema.all_columns:
             if not self.data[col].map(lambda x: isinstance(x, str)).all():
-                raise TypeError(
-                    f"Column `{col}` must contain only strings."
-                )
+                raise TypeError(f"Column `{col}` must contain only strings.")
 
     @staticmethod
     def _assert_hf_schema(hf_ds, schema: DatasetSchema) -> None:
@@ -218,11 +213,9 @@ class TaskDataset:
                 f"Missing columns: {sorted(missing)}\n"
                 f"Available columns: {hf_ds.column_names}"
             )
-            
+
     def to_labeled_examples(
-        self,
-        *,
-        question_id_column: str | None = None
+        self, *, question_id_column: str | None = None
     ) -> tuple[list[dict], list[str], list[str]]:
         """
         Convert dataset into flattened (prompt, label) examples.
@@ -270,8 +263,6 @@ class TaskDataset:
 
         return examples, eval_prompts
 
-
-
     def __len__(self) -> int:
         return len(self.data)
 
@@ -280,19 +271,16 @@ class TaskDataset:
 
         return {
             "prompt": row[self.schema.prompt_column],
-            "responses": {
-                col: row[col]
-                for col in self.schema.category_columns
-            },
+            "responses": {col: row[col] for col in self.schema.category_columns},
         }
 
 
 if __name__ == "__main__":
-    
     schema = DatasetSchema(
-                        prompt_column="Question",
-                        category_columns=["Correct Answers", "Incorrect Answers"],
-                    )
-    
-    dataset, eval_prompts, unique_labels = TaskDataset.from_huggingface(repo_id="domenicrosati/TruthfulQA", split="train", schema=schema)
-    
+        prompt_column="Question",
+        category_columns=["Correct Answers", "Incorrect Answers"],
+    )
+
+    dataset, eval_prompts, unique_labels = TaskDataset.from_huggingface(
+        repo_id="domenicrosati/TruthfulQA", split="train", schema=schema
+    )
