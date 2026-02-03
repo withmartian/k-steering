@@ -1,4 +1,3 @@
-import asyncio
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -7,7 +6,6 @@ import pytest
 import torch
 
 from k_steering.steering.k_steer import KSteering
-
 
 
 @pytest.fixture

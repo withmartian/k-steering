@@ -1,12 +1,12 @@
-import numpy as np
-import torch
-import pytest
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import numpy as np
+import pytest
+import torch
+
 from k_steering.steering.caa import CAASteering
 
- 
 
 class DummyHandle:
     def remove(self):

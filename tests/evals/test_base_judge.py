@@ -1,12 +1,9 @@
 import json
+
 import pytest
 from pydantic import BaseModel
-from jinja2 import Template
+
 from k_steering.evals.judges.base_judge import BaseLLMJudge
-from k_steering.data.eval_prompt_templates import (
-    AVOID_AND_TOWARDS_EVALUATION_PROMPT_TEMPLATE_STR,
-    AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR,
-)
 
 
 class DummyResponse(BaseModel):

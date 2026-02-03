@@ -1,17 +1,15 @@
 import json
+
 import pytest
 from pydantic import BaseModel
-from jinja2 import Template
-from k_steering.evals.judges.debate import DebateJudge
-from k_steering.evals.judges.base_judge import BaseLLMJudge
+
 from k_steering.data.task_constants import (
-    DEBATE_JUDGE_SYSTEM_PROMPT,
     DEBATE_DESCRIPTIONS,
+    DEBATE_JUDGE_SYSTEM_PROMPT,
 )
-from k_steering.data.eval_prompt_templates import (
-    AVOID_AND_TOWARDS_EVALUATION_PROMPT_TEMPLATE_STR,
-    AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR,
-)
+from k_steering.evals.judges.base_judge import BaseLLMJudge
+from k_steering.evals.judges.debate import DebateJudge
+
 
 class DummyResponse(BaseModel):
     steering_successful: bool

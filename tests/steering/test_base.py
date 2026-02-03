@@ -1,10 +1,11 @@
+from types import SimpleNamespace
+from unittest.mock import MagicMock
+
 import pytest
 import torch
-from unittest.mock import MagicMock
-from types import SimpleNamespace
 
-import torch
 from k_steering.steering.base import ActivationSteering
+
 
 class DummySteering(ActivationSteering):
     def _load_task(self, task_name: str, max_samples: int = None):

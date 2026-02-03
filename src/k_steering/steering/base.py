@@ -200,7 +200,7 @@ class ActivationSteering(ABC, PushToHubMixin):
 
                     if return_attention_mask:
                         attention_masks.append(inputs["attention_mask"])
-                    print(f"DEBUG: inputs type: {type(inputs)}, inputs: {inputs}")
+                    # print(f"DEBUG: inputs type: {type(inputs)}, inputs: {inputs}")
                     outputs = self.model(
                         **inputs,
                         output_hidden_states=True,

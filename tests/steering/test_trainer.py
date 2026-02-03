@@ -1,10 +1,12 @@
 import numpy as np
-import torch
 import pytest
+import torch
 
 # adjust imports to your module path
-from k_steering.steering.trainer import MultiLabelSteeringModel, ActivationSteeringTrainer
-
+from k_steering.steering.trainer import (
+    ActivationSteeringTrainer,
+    MultiLabelSteeringModel,
+)
 
 
 class DummyTrainerConfig:
@@ -21,7 +23,6 @@ class DummyTrainerConfig:
         self.num_labels = num_labels
         self.clf_type = clf_type
         self.lr = lr
-
 
 
 @pytest.mark.parametrize("clf_type", ["linear", "mlp"])
@@ -44,7 +45,6 @@ def test_model_invalid_type():
         MultiLabelSteeringModel(8, 16, 3, clf_type="bad")
 
 
-
 def test_trainer_initialization():
     cfg = DummyTrainerConfig()
     trainer = ActivationSteeringTrainer(cfg)
@@ -52,7 +52,6 @@ def test_trainer_initialization():
     assert trainer.classifier is not None
     assert trainer.loss_fn is not None
     assert trainer.optimizer is not None
-
 
 
 def test_fit_changes_weights():
@@ -69,8 +68,7 @@ def test_fit_changes_weights():
     after = list(trainer.classifier.parameters())
 
     # at least one param tensor changed
-    assert any(not torch.allclose(b, a) for b, a in zip(before, after))
-
+    assert any(not torch.allclose(b, a) for b, a in zip(before, after, strict=True))
 
 
 def test_predict_proba_range_and_shape():
@@ -86,15 +84,16 @@ def test_predict_proba_range_and_shape():
     assert np.all(probs <= 1.0)
 
 
-
 def test_compute_steering_loss_basic():
     cfg = DummyTrainerConfig(num_labels=4)
     trainer = ActivationSteeringTrainer(cfg)
 
-    logits = torch.tensor([
-        [1.0, 2.0, 3.0, 4.0],
-        [0.5, 0.5, 0.5, 0.5],
-    ])
+    logits = torch.tensor(
+        [
+            [1.0, 2.0, 3.0, 4.0],
+            [0.5, 0.5, 0.5, 0.5],
+        ]
+    )
 
     loss = trainer._compute_steering_loss(
         logits,
@@ -122,7 +121,6 @@ def test_compute_steering_loss_empty_indices():
     )
 
     assert torch.allclose(loss, torch.zeros(4, device=loss.device))
-
 
 
 def test_steer_activations_shape_preserved():

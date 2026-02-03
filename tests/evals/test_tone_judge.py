@@ -1,16 +1,15 @@
 import json
+
 import pytest
 from pydantic import BaseModel
-from jinja2 import Template
-from k_steering.evals.judges.tone import ToneJudge
-from k_steering.evals.judges.base_judge import BaseLLMJudge
+
 from k_steering.data.task_constants import (
-    TONE_JUDGE_SYSTEM_PROMPT,
     TONE_DESCRIPTIONS,
+    TONE_JUDGE_SYSTEM_PROMPT,
 )
-from k_steering.data.eval_prompt_templates import (
-    AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR,
-)
+from k_steering.evals.judges.base_judge import BaseLLMJudge
+from k_steering.evals.judges.tone import ToneJudge
+
 
 class DummyResponse(BaseModel):
     steering_successful: bool

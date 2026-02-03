@@ -1,10 +1,10 @@
-import pytest
-import asyncio
 from unittest.mock import MagicMock
 
-from k_steering.evals.judges.ood import OODJudge
-from k_steering.evals.judges.base_judge import BaseLLMJudge
+import pytest
+
 from k_steering.data.task_constants import OOD_JUDGE_SYSTEM_PROMPT
+from k_steering.evals.judges.ood import OODJudge
+
 
 @pytest.fixture
 def judge():
@@ -26,7 +26,7 @@ def test_create_prompt(judge):
 
     expected = OOD_JUDGE_SYSTEM_PROMPT.format(generation=generation)
     assert prompt == expected
-    
+
 
 @pytest.mark.asyncio
 async def test_evaluate_sample_calls_run_model(judge):
@@ -41,6 +41,7 @@ async def test_evaluate_sample_calls_run_model(judge):
     assert generation in call_kwargs["prompt"]
     assert result == {"logprob": -1.23}
 
+
 @pytest.mark.asyncio
 async def test_evaluate_batch(judge):
     generations = ["a", "b", "c"]
@@ -50,6 +51,7 @@ async def test_evaluate_batch(judge):
     assert len(results) == 3
     assert results == [{"logprob": -1.23}] * 3
     assert judge._run_model.call_count == 3
+
 
 @pytest.mark.asyncio
 async def test_evaluate_batch_preserves_order():
@@ -63,6 +65,5 @@ async def test_evaluate_batch_preserves_order():
     generations = ["first", "second", "third"]
     results = await judge.evaluate_batch(generations)
 
-    for gen, res in zip(generations, results):
+    for gen, res in zip(generations, results, strict=True):
         assert gen in res["prompt"]
-
