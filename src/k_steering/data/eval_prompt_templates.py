@@ -1,4 +1,4 @@
-AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR = """ You are an expert evaluator of stylistic steering in {task} styles.
+AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR = """ You are an expert evaluator of stylistic steering in {{task}} styles.
 
 Your task is to assess whether a given text has been successfully steered *away from* a specific target style.  
 You must evaluate the texts objectively and consistently, using the definitions and scales provided below.
@@ -6,8 +6,8 @@ You must evaluate the texts objectively and consistently, using the definitions 
 ────────────────────────────────────
 STYLE TO STEER AWAY FROM
 ────────────────────────────────────
-Style name: {avoid_style}  
-Style description: {avoid_style_description}
+Style name: {{avoid_style}}  
+Style description: {{avoid_style_description}}
 
 ────────────────────────────────────
 TEXTS TO EVALUATE
@@ -15,12 +15,12 @@ TEXTS TO EVALUATE
 
 BASELINE TEXT (before steering):
 ```
-{baseline_text}
+{{baseline_text}}
 ```
 
 STEERED TEXT (after steering):
 ```
-{steered_text}
+{{steered_text}}
 ```
 
 ────────────────────────────────────
@@ -67,15 +67,15 @@ Use the following schema exactly:
 
 {
   "baseline_scores": {
-    avoid_style: "{avoid_style}",
+    avoid_style: "{{avoid_style}}",
     avoid_style_score: <number from 0 to 10>
   },
   "steered_scores": {
-    avoid_style: "{avoid_style}",
+    avoid_style: "{{avoid_style}}",
     avoid_style_score: <number from 0 to 10>
   },
   "moved_away": {
-    avoid_style: "{avoid_style}",
+    avoid_style: "{{avoid_style}}",
     avoid_style_bool: <true or false>
   },
   "steering_successful": <true or false>,
@@ -86,7 +86,7 @@ Use the following schema exactly:
 
 """
 
-AVOID_AND_TOWARDS_EVALUATION_PROMPT_TEMPLATE_STR = """You are an expert evaluator of stylistic steering in {task} styles.
+AVOID_AND_TOWARDS_EVALUATION_PROMPT_TEMPLATE_STR = """You are an expert evaluator of stylistic steering in {{task}} styles.
 
 Your task is to assess whether a given text has been successfully steered
 (a) away from one specified style and
@@ -98,14 +98,14 @@ scales, and rules provided below.
 ────────────────────────────────────
 STYLE TO STEER AWAY FROM
 ────────────────────────────────────
-Style name: {avoid_style}  
-Style description: {avoid_style_description}
+Style name: {{avoid_style}}  
+Style description: {{avoid_style_description}}
 
 ────────────────────────────────────
 STYLE TO STEER TOWARD
 ────────────────────────────────────
-Style name: {target_style}  
-Style description: {target_style_description}
+Style name: {{target_style}}  
+Style description: {{target_style_description}}
 
 ────────────────────────────────────
 TEXTS TO EVALUATE
@@ -113,12 +113,12 @@ TEXTS TO EVALUATE
 
 BASELINE TEXT (before steering):
 ```
-{baseline_text}
+{{baseline_text}}
 ```
 
 STEERED TEXT (after steering):
 ```
-{steered_text}
+{{steered_text}}
 ```
 
 ────────────────────────────────────
@@ -130,20 +130,20 @@ EVALUATION CRITERIA
    - 10 = Style is extremely strong and dominant  
    Score how strongly each specified style appears in each text.
 
-2. **Moved Away Judgment ({avoid_style})**  
+2. **Moved Away Judgment ({{avoid_style}})**  
    - Return `true` if the STEERED TEXT shows a clear and meaningful reduction
-     in the {avoid_style} compared to the BASELINE TEXT.
+     in the {{avoid_style}} compared to the BASELINE TEXT.
    - Otherwise, return `false`.
 
-3. **Moved Toward Judgment ({target_style})**  
+3. **Moved Toward Judgment ({{target_style}})**  
    - Return `true` if the STEERED TEXT shows a clear and meaningful increase
-     in the {target_style} compared to the BASELINE TEXT.
+     in the {{target_style}} compared to the BASELINE TEXT.
    - Otherwise, return `false`.
 
 4. **Steering Success**  
    Steering is considered successful **only if all of the following are true**:
-   - The steered text moves away from {avoid_style}
-   - The steered text moves toward {target_style}
+   - The steered text moves away from {{avoid_style}}
+   - The steered text moves toward {{target_style}}
    - The changes are meaningful (not trivial or ambiguous)
    - The steered text is coherent, meaningful, and grammatically well-formed
 
@@ -172,15 +172,15 @@ Use the following schema exactly:
 
 {
   "baseline_scores": {
-    avoid_style: "{avoid_style}",
+    avoid_style: "{{avoid_style}}",
     avoid_style_score: <number from 0 to 10>,
-    target_style: "{target_style}",
+    target_style: "{{target_style}}",
     target_style_score: <number from 0 to 10>
   },
   "steered_scores": {
-    avoid_style: "{avoid_style}",
+    avoid_style: "{{avoid_style}}",
     avoid_style_score: <number from 0 to 10>,
-    target_style: "{target_style}",
+    target_style: "{{target_style}}",
     target_style_score: <number from 0 to 10>
   },
   "moved_away: {
@@ -188,7 +188,7 @@ Use the following schema exactly:
       avoid_style_bool: <true or false>
       },
   "moved_towards: {
-      target_style: "{target_style}",
+      target_style: "{{target_style}}",
       target_style_bool: <true or false>
       },
   "steering_successful": <true or false>,
@@ -218,17 +218,17 @@ and implicit instruction constraints.
 
 User instruction:
 ```
-{dataset_instruction}
+{{dataset_instruction}}
 ```
 
 Model output:
 ```
-{model_output}
+{{model_output}}
 ```
 
 Reference answer (if available, may be empty):
 ```
-{dataset_output}
+{{dataset_output}}
 ```
 
 ────────────────────────────────────
@@ -293,13 +293,11 @@ OUTPUT REQUIREMENTS
 Use the following schema exactly:
 
 {
-  "rubric_scores": {
-    "coherence": <number from 0 to 5>,
-    "relevance": <number from 0 to 5>,
-    "fluency": <number from 0 to 5>,
-    "instruction_adherence": <number from 0 to 5>,
-    "factual_consistency": <number from 0 to 5>
-  },
+  "coherence": <number from 0 to 5>,
+  "relevance": <number from 0 to 5>,
+  "fluency": <number from 0 to 5>,
+  "instruction_adherence": <number from 0 to 5>,
+  "factual_consistency": <number from 0 to 5>,
   "overall_quality": <number from 0 to 5>,
   "is_acceptable": <true or false>,
   "explanation": "<brief, concrete justification highlighting key strengths and weaknesses>"

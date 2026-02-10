@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import pickle
+import random
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -199,7 +200,7 @@ class ActivationSteering(ABC, PushToHubMixin):
 
                     if return_attention_mask:
                         attention_masks.append(inputs["attention_mask"])
-
+                    # print(f"DEBUG: inputs type: {type(inputs)}, inputs: {inputs}")
                     outputs = self.model(
                         **inputs,
                         output_hidden_states=True,
@@ -293,7 +294,7 @@ class ActivationSteering(ABC, PushToHubMixin):
 
     @abstractmethod
     def build_steering_trainer(
-        self, cache: dict[str, torch.Tensor], eval: bool = False
+        self, eval: bool = False
     ):
         """
         Build steering classifier/vectors from cached activations
@@ -348,9 +349,17 @@ class ActivationSteering(ABC, PushToHubMixin):
         if task is not None:
             self.dataset, self.unique_labels, self.eval_prompts = self._load_task(task,max_samples)
         elif dataset is not None:
-            self.dataset = dataset
-            self.unique_labels = self._extract_labels(dataset)
-            self.eval_prompts = eval_prompts or []
+            if max_samples:
+                random.seed(42)
+                self.dataset = random.sample(dataset, max_samples)
+                self.eval_prompts = random.sample(eval_prompts, max_samples) or []
+                self.unique_labels = self._extract_labels(dataset)
+            else:
+                self.dataset = dataset
+                self.unique_labels = self._extract_labels(dataset)
+                self.eval_prompts = eval_prompts or []
+                
+            
         else:
             raise ValueError("Either 'task' or 'dataset' must be provided")
         

@@ -30,7 +30,6 @@ class AlpacaJudge(BaseLLMJudge):
         model_output: str,
         dataset_output: str,
         response_format: type[BaseModel],
-        target_style: str | None = None,
     ) -> dict:
         """
         Evaluate a single (baseline, steered) pair.
@@ -47,19 +46,19 @@ class AlpacaJudge(BaseLLMJudge):
         )
 
         parsed = self._parse_json_from_llm_output(raw_output)
-        return self._postprocess_result(parsed)
+        return parsed
+    
 
     def evaluate_batch(
         self,
         model_outputs: list[str],
         benchmark_dataset: pd.DataFrame,
-        response_format: type[BaseModel],
-        target_style: str | None = None,
+        response_format: type[BaseModel]
     ) -> dict:
         """
         Evaluate a batch and return aggregate statistics.
         """
-        if len(model_outputs) != len(benchmark_dataset.shape[0]):
+        if len(model_outputs) != benchmark_dataset.shape[0]:
             raise ValueError("Model output and benchmark dataset length must match.")
 
         results = [
@@ -79,7 +78,7 @@ class AlpacaJudge(BaseLLMJudge):
         dataset_instruction: str,
         model_output: str,
         dataset_output: str,
-        target_style: None,
+        target_style: str = None,
     ) -> str:
         template_str = self._select_prompt_template(
             target_style=target_style,
