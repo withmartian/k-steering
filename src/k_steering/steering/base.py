@@ -5,7 +5,7 @@ import pickle
 import random
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 import torch
 import torch.nn.functional as F
@@ -412,7 +412,8 @@ class ActivationSteering(ABC, PushToHubMixin):
         layer_strengths: dict[int, float] | None = None,
         max_new_tokens: int = 100,
         return_dict: bool = False,
-        **generation_kwargs,
+        *,
+        generation_kwargs,
     ) -> str | dict[str, Any]:
         """
         Generate steered output for input prompt
@@ -426,7 +427,7 @@ class ActivationSteering(ABC, PushToHubMixin):
             layer_strengths (dict): Layer-specific strengths
             max_new_tokens (int): Maximum tokens to generate
             return_dict (bool): Return full output dictionary
-            **generation_kwargs: Additional generation parameters
+            generation_kwargs: Additional generation parameters
 
         Returns:
             Generated text or output dictionary
@@ -444,8 +445,7 @@ class ActivationSteering(ABC, PushToHubMixin):
         self.avoid_lbls = avoid_labels
 
         # Prepare generation
-        self.gen_kwargs = self._prepare_generation_kwargs(
-            max_new_tokens=max_new_tokens, **generation_kwargs
+        self.gen_kwargs = self._prepare_generation_kwargs(generation_kwargs
         )
 
         # Subclass-specific steering implementation
@@ -465,36 +465,36 @@ class ActivationSteering(ABC, PushToHubMixin):
 
     def _prepare_generation_kwargs(
         self,
-        max_new_tokens: int = 100,
-        temperature: float = 1.0,
-        top_p: float = 0.9,
-        do_sample: bool = True,
-        **kwargs,
+        generation_kwargs: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """
-        Prepare generation keyword arguments
+        generation_kwargs = dict(generation_kwargs or {})
 
-        Args:
-            max_new_tokens (int): Maximum tokens to generate
-            temperature (float): Sampling temperature
-            top_p (float): Nucleus sampling parameter
-            do_sample (bool): Whether to use sampling
-            **kwargs: Additional generation parameters
-
-        Returns:
-            Dictionary of generation parameters
-        """
-        gen_kwargs = {
-            "max_new_tokens": max_new_tokens,
-            "temperature": temperature,
-            "top_p": top_p,
-            "do_sample": do_sample,
-            "pad_token_id": self.tokenizer.pad_token_id,
-            "eos_token_id": self.tokenizer.eos_token_id,
+        # Defaults
+        defaults = {
+            "max_new_tokens": 100,
+            "temperature": 1.0,
+            "top_p": 0.9,
+            "do_sample": True,
         }
-        gen_kwargs.update(kwargs)
-        return gen_kwargs
 
+        # Resolve known keys: user value > default
+        gen_kwargs = {
+            key: generation_kwargs.pop(key, default)
+            for key, default in defaults.items()
+        }
+
+        # Add tokenizer-specific values
+        gen_kwargs.update(
+            {
+                "pad_token_id": self.tokenizer.pad_token_id,
+                "eos_token_id": self.tokenizer.eos_token_id,
+            }
+        )
+
+        # Pass through any extra user-provided generation args
+        gen_kwargs.update(generation_kwargs)
+
+        return gen_kwargs
     def _generate_with_steering(
         self,
         input_prompt: str,

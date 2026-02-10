@@ -306,7 +306,7 @@ class KSteering(ActivationSteering):
         input_prompts = self._get_prompts_from_dataset(self.dataset)
         
         self.gen_kwargs = self._prepare_generation_kwargs(
-            max_new_tokens=max_new_tokens, **generation_kwargs
+            **generation_kwargs
         )
         
         layer_wise_alpha = {}

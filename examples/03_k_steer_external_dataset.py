@@ -35,7 +35,9 @@ steering_config = SteeringConfig(
 
 MAX_NEW_TOKENS = 100
 
+
 GENERATION_KWARGS = {
+    "max_new_tokens": MAX_NEW_TOKENS,
     "temperature": 1.0,
     "top_p": 0.9,
 }
@@ -74,11 +76,14 @@ dataset, eval_prompts = TaskDataset.from_huggingface(
 # Train steering classifiers
 # ---------------------------------------------------------------------
 
+# Maximum number of samples for training
+MAX_SAMPLES = 10
+
 # Train classifiers using labeled hidden states
 steer_model.fit(
     dataset=dataset,
     eval_prompts=eval_prompts,
-    max_samples=10,       # Limit number of samples for quick experimentation
+    max_samples=MAX_SAMPLES,       # Limit number of samples for quick experimentation
 )
 
 # ---------------------------------------------------------------------
@@ -95,7 +100,6 @@ output = steer_model.get_steered_output(
     prompts,
     target_labels=["Correct Answers"],     # Behaviors to encourage
     avoid_labels=["Incorrect Answers"],    # Behaviors to suppress
-    max_new_tokens=MAX_NEW_TOKENS,
     generation_kwargs=GENERATION_KWARGS,
 )
 

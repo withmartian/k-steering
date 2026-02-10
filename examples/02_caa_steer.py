@@ -40,8 +40,12 @@ TASK_NAME = "debates"
 # Maximum number of tokens to generate
 MAX_NEW_TOKENS = 100
 
+# Maximum number of samples for training
+MAX_SAMPLES = 10
+
 # Standard generation parameters passed to the model
 GENERATION_KWARGS = {
+    "max_new_tokens": MAX_NEW_TOKENS,
     "temperature": 1.0,
     "top_p": 0.9,
 }
@@ -64,7 +68,7 @@ steer_model = CAASteering(
 # max_samples controls how many examples are used for training, remove max_samples arg to load complete data
 steer_model.fit(
     task=TASK_NAME,
-    max_samples=10,
+    max_samples=MAX_SAMPLES,
 )
 
 # ---------------------------------------------------------------------
@@ -81,7 +85,6 @@ output = steer_model.get_steered_output(
     prompts,
     target_labels=['Empirical Grounding'],     # Labels to steer *towards*
     avoid_labels=['Straw Man Reframing'],    # Labels to steer *away from*
-    max_new_tokens=MAX_NEW_TOKENS,
     generation_kwargs=GENERATION_KWARGS,
 )
 

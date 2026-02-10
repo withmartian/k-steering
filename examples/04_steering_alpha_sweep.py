@@ -40,7 +40,12 @@ steering_config = SteeringConfig(
 TASK_NAME = "debates"
 
 MAX_NEW_TOKENS = 100
+
+# Maximum number of samples for training
+MAX_SAMPLES = 10
+
 GENERATION_KWARGS = {
+    "max_new_tokens": MAX_NEW_TOKENS,
     "temperature": 1.0,
     "top_p": 0.9,
 }
@@ -61,7 +66,7 @@ steer_model = KSteering(
 # Fit classifiers on task-specific data
 steer_model.fit(
     task=TASK_NAME,
-    max_samples=10,         # Limit samples for faster experimentation
+    max_samples=MAX_SAMPLES,         # Limit samples for faster experimentation
 )
 
 # ---------------------------------------------------------------------
@@ -98,7 +103,6 @@ output = steer_model.get_steered_output(
     prompts,
     target_labels=["Empirical Grounding"],       # Behaviors to encourage
     avoid_labels=["Straw Man Reframing"],        # Behaviors to suppress
-    max_new_tokens=MAX_NEW_TOKENS,
     generation_kwargs=GENERATION_KWARGS,
     layer_strengths=layer_wise_alpha,            # Apply learned alphas
 )
