@@ -1,5 +1,46 @@
 # K-Steering
 
+## Table of Contents
+
+- [Repository Overview](#repository-overview)
+- [Introduction](#introduction)
+- [Features](#✨-features)
+- [Quick Start](#quick-start)
+- [API Usage](#api-usage)
+- [K-Steering Example](#k-steering-non-linear-steering)
+- [CAA-Steering Example](#caa-steering)
+
+## Repository Overview
+
+Brief Overview of the Repository (Includes only major implementation details)
+
+<details> 
+<summary>Overview</summary>
+    
+    k_steering/
+    ├── k_steering/
+    │    ├── steering/
+    │    │   ├── base.py             # CAA implementation
+    │    │   ├── k_steer.py          # K steering implementation
+    │    │   └── trainer.py          # Steering Classifier Implementation
+    │    │   └── caa.py              # CAA implementation
+    │    │   └── dataset.py          # External dataset integration
+    │    ├── evals/
+    │    │   ├── judges/
+    │    │   │     ├── base.py       # base judge class
+    │    │   │     └── tone.py       # tone judge - subclass of base judge class
+    │    │   │     └── debate.py     # debate judge - subclass of base judge class
+    │    │   │     └── ood.py        # OOD judge (for Parameter Sweep) - subclass of base judge class
+    │    ├── data/
+    │    ├── utils/
+    └── README.md
+    
+</details>
+
+<br>
+
+## Introduction
+
 K-Steering is a steering framework for training and applying non-linear control mechanisms to large language models (LLMs), enabling you to steer model behavior **towards desired target attributes** and **away from undesired behaviors.**
 
 The framework is based on the paper [Beyond Linear Steering: Unified Multi-Attribute Control for Language Models](https://arxiv.org/abs/2505.24535), which introduces Non-Linear K-Steering as a principled alternative to linear combinations of steering vectors for multi-attribute control.
@@ -11,7 +52,7 @@ backpropagating this loss through the classifier, we obtain the steered activati
 
 In addition to K-Steering, the package also includes an implementation of [Contrastive Activation Addition (CAA)](https://arxiv.org/abs/2312.06681) for comparison and baseline steering experiments.
 
-# ✨ Features
+## ✨ Features
 
 - **K-Steering–based multi-attribute control** with support for non-linear steering
 - **Native Contrastive Activation Addition (CAA)** integration
@@ -21,11 +62,11 @@ In addition to K-Steering, the package also includes an implementation of [Contr
 - **Seamless dataset integration**, supporting both Hugging Face and local datasets
 - **Built for research and interpretability**, enabling controlled and analyzable generation workflows
 
-# Quick Start
+## Quick Start
 
 Get K-Steering running in minutes!!
 
-## Try it in Google Colab
+### Try it in Google Colab
 
 You can explore K-Steering without any local setup using the Colab notebook below.
 
@@ -35,18 +76,18 @@ _(Includes installation, training, and inference examples)_
 
 > The Colab notebook mirrors the examples below and is the recommended way to get started quickly.
 
-## 📘 Glossary
+### 📘 Glossary
 
 For detailed explanations of the core concepts, terminology, and configuration arguments used throughout the package, see the [Glossary](/docs/GLOSSARY.md).
 
-## Prerequisites
+### Prerequisites
 
 - **Python 3.12 or higher**
 - **[uv](https://docs.astral.sh/uv/)** - Fast Python package installer and resolver
 
 To install `uv`, follow the instructions at https://docs.astral.sh/uv/getting-started/installation/
 
-## Installation
+### Installation
 
 For now, we recommend running K-Steering locally from the root directory:
 
@@ -56,7 +97,7 @@ uv sync # for Environment Setup
 
 This will create the environment and install all required dependencies.
 
-# API Usage
+## API Usage
 
 See [Examples](/examples/) for Complete Scripts for Training Different Steering Models
 

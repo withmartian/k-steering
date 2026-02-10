@@ -8,7 +8,7 @@ This script shows how to:
 4. Generate steered model outputs at inference time
 """
 
-from k_steering.steering.config import SteeringConfig
+from k_steering.steering.config import SteeringConfig, TrainerConfig
 from k_steering.steering.dataset import DatasetSchema, TaskDataset
 from k_steering.steering.k_steer import KSteering
 
@@ -20,13 +20,19 @@ from k_steering.steering.k_steer import KSteering
 MODEL_NAME = "unsloth/Llama-3.2-1B-Instruct"
 
 # ---------------------------------------------------------------------
-# Steering configuration
+# Steering & Trainer configuration
 # ---------------------------------------------------------------------
 
 # Configure which layers are used for training and applying steering
 steering_config = SteeringConfig(
     train_layer=1,          # Layer used to train steering classifiers
     steer_layers=[1, 3],    # Layers where steering vectors are applied
+)
+
+# Define a TrainerConfig for K-steering classifier configuration
+trainer_config = TrainerConfig(
+    clf_type = "mlp",       # Type of classifier, for e.g., "mlp" or "linear"
+    hidden_dim = 128        # Hidden dimension of the MLP model
 )
 
 # ---------------------------------------------------------------------
@@ -50,6 +56,7 @@ GENERATION_KWARGS = {
 steer_model = KSteering(
     model_name=MODEL_NAME,
     steering_config=steering_config,
+    trainer_config=trainer_config
 )
 
 # ---------------------------------------------------------------------

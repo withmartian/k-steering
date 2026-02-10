@@ -11,7 +11,7 @@ This script demonstrates how to:
 import asyncio
 
 from k_steering.evals.judges.ood import OODJudge
-from k_steering.steering.config import SteeringConfig
+from k_steering.steering.config import SteeringConfig, TrainerConfig
 from k_steering.steering.k_steer import KSteering
 
 # ---------------------------------------------------------------------
@@ -22,7 +22,7 @@ from k_steering.steering.k_steer import KSteering
 MODEL_NAME = "unsloth/Llama-3.2-1B-Instruct"
 
 # ---------------------------------------------------------------------
-# Steering configuration
+# Steering & Trainer configuration
 # ---------------------------------------------------------------------
 
 # Configure training, evaluation, and steering layers
@@ -30,6 +30,13 @@ steering_config = SteeringConfig(
     train_layer=1,          # Layer used to train steering classifiers
     steer_layers=[1, 3],    # Layers where steering is applied
 )
+
+# Define a TrainerConfig for K-steering classifier configuration
+trainer_config = TrainerConfig(
+    clf_type = "mlp",       # Type of classifier, for e.g., "mlp" or "linear"
+    hidden_dim = 128        # Hidden dimension of the MLP model
+)
+
 
 # ---------------------------------------------------------------------
 # Task and generation settings
@@ -57,6 +64,7 @@ GENERATION_KWARGS = {
 steer_model = KSteering(
     model_name=MODEL_NAME,
     steering_config=steering_config,
+    trainer_config=trainer_config
 )
 
 # ---------------------------------------------------------------------
