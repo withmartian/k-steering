@@ -8,11 +8,17 @@ This script demonstrates how to:
 4. Apply the learned layer-wise strengths during inference
 """
 
-import asyncio
+# ---------------------------------------------------------------------
+# Import and Env Setup
+# ---------------------------------------------------------------------
 
+import asyncio
+import os
 from k_steering.evals.judges.ood import OODJudge
 from k_steering.steering.config import SteeringConfig, TrainerConfig
 from k_steering.steering.k_steer import KSteering
+
+os.environ['OPENAI_API_KEY'] = "<OPENAI_API_KEY>"
 
 # ---------------------------------------------------------------------
 # Model configuration
