@@ -20,17 +20,17 @@ Brief Overview of the Repository (Includes only major implementation details)
     k_steering/
     ├── k_steering/
     │    ├── steering/
-    │    │   ├── base.py             # CAA implementation
+    │    │   ├── base.py             # Base Steering Class
     │    │   ├── k_steer.py          # K steering implementation
     │    │   └── trainer.py          # Steering Classifier Implementation
     │    │   └── caa.py              # CAA implementation
     │    │   └── dataset.py          # External dataset integration
     │    ├── evals/
     │    │   ├── judges/
-    │    │   │     ├── base.py       # base judge class
-    │    │   │     └── tone.py       # tone judge - subclass of base judge class
-    │    │   │     └── debate.py     # debate judge - subclass of base judge class
-    │    │   │     └── ood.py        # OOD judge (for Parameter Sweep) - subclass of base judge class
+    │    │   │     ├── base.py       # Base Judge class
+    │    │   │     └── tone.py       # Tone Judge
+    │    │   │     └── debate.py     # Debate Judge
+    │    │   │     └── ood.py        # OOD judge (for Parameter Sweep)
     │    ├── data/
     │    ├── utils/
     └── README.md
