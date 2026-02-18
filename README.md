@@ -76,9 +76,9 @@ _(Includes installation, training, and inference examples)_
 
 > The Colab notebook mirrors the examples below and is the recommended way to get started quickly.
 
-### 📘 Glossary
+### 📘 Documentation
 
-For detailed explanations of the core concepts, terminology, and configuration arguments used throughout the package, see the [Glossary](/docs/GLOSSARY.md).
+For detailed explanations of the core concepts, terminology, and configuration arguments used throughout the package, see the [Documentation](/docs/README.md).
 
 ### Prerequisites
 
