@@ -53,6 +53,10 @@ Start here if you're new:
 
 - [Argument Glossary](./api/arg_glossary.md)
 
+### Miscellaneous
+
+- [Large Model Setup Guide](./misc/larger_model_setup.md)
+
 ---
 
 ## 🤝 Contributing
