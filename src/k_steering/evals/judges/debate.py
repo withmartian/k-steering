@@ -1,6 +1,9 @@
-from typing import Dict
-from src.k_steering.evals.judges.base_judge import BaseLLMJudge
-from src.k_steering.utils.constants import DEBATE_DESCRIPTIONS, DEBATE_JUDGE_SYSTEM_PROMPT
+from k_steering.data.task_constants import (
+    DEBATE_DESCRIPTIONS,
+    DEBATE_JUDGE_SYSTEM_PROMPT,
+)
+from k_steering.evals.judges.base_judge import BaseLLMJudge
+
 
 class DebateJudge(BaseLLMJudge):
     
@@ -15,6 +18,7 @@ class DebateJudge(BaseLLMJudge):
             model_name: Judge Model Name
         """
         super().__init__(model_name)
+        self.judge_name = "DebateJudge"
         self.task = "debates"
         self.system_prompt = DEBATE_JUDGE_SYSTEM_PROMPT
         self.style_descriptions = DEBATE_DESCRIPTIONS

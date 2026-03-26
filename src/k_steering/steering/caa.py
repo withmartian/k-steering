@@ -1,17 +1,18 @@
-import torch
-import torch.nn as nn
-import numpy as np
-import os
-from typing import Optional, Dict, Any, List, Tuple, Union
-from collections import defaultdict
-from sklearn.model_selection import train_test_split
 import logging
-from src.k_steering.steering.base import ActivationSteering
-from src.k_steering.steering.trainer import ActivationSteeringTrainer
-from src.k_steering.steering.config import SteeringConfig, TrainerConfig
-from src.k_steering.utils.data import load_task
-from src.k_steering.utils.model import get_transformer_layers
-from src.k_steering.utils.constants import DEBATE_DESCRIPTIONS, TONE_DESCRIPTIONS
+import os
+from collections import defaultdict
+from typing import Any
+
+import numpy as np
+import torch
+from sklearn.model_selection import train_test_split
+
+from k_steering.data.task_constants import DEBATE_DESCRIPTIONS, TONE_DESCRIPTIONS
+from k_steering.steering.base import ActivationSteering
+from k_steering.steering.config import SteeringConfig, TrainerConfig
+from k_steering.utils.data import load_task
+from k_steering.utils.model import get_transformer_layers
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -33,9 +34,9 @@ class CAASteering(ActivationSteering):
     def __init__(
         self, 
         model_name: str, 
-        steering_config: Optional[SteeringConfig] = None,
-        trainer_config: Optional[TrainerConfig] = None,
-        device: Optional[str] = None
+        steering_config: SteeringConfig | None = None,
+        trainer_config: TrainerConfig | None = None,
+        device: str | None = None
     ):
         """
         Initialize K-Linear Steering class
@@ -60,7 +61,7 @@ class CAASteering(ActivationSteering):
             self.logger.addHandler(file_handler)
             self.logger.setLevel(logging.INFO)
         
-    def format_prompt(self,prompts: List[str], style: str=None) -> List[str]:
+    def format_prompt(self,prompts: list[str], style: str=None) -> list[str]:
         """
         Formatting Prompt for the task specific style
 
@@ -81,10 +82,11 @@ class CAASteering(ActivationSteering):
         
     def fit(
         self,
-        task: Optional[str] = None,
-        dataset: Optional[Any] = None,
+        task: str | None = None,
+        dataset: Any | None = None,
         batch_size: int = 64,
-        style_instructions: Dict = None
+        style_instructions: dict = None,
+        max_samples: int = None
     ) -> "ActivationSteering":
         
         """
@@ -114,7 +116,7 @@ class CAASteering(ActivationSteering):
         """
         # Load data
         if task is not None:
-            _, self.unique_labels, self.prompts = self._load_task(task)
+            _, self.unique_labels, self.prompts = self._load_task(task, max_samples=max_samples)
         elif dataset is not None:
             self.prompts = self._get_prompts_from_dataset(dataset)
             self.unique_labels = self._extract_labels(dataset)
@@ -125,6 +127,7 @@ class CAASteering(ActivationSteering):
             self.style_instructions = TONE_DESCRIPTIONS
         elif task == "debates":
             self.style_instructions = {key: DEBATE_DESCRIPTIONS[key] for key in DEBATE_DESCRIPTIONS.keys() if key in ['Empirical Grounding','Straw Man Reframing']}
+            # self.style_instructions = {key: DEBATE_DESCRIPTIONS[key] for key in DEBATE_DESCRIPTIONS.keys()}
         elif style_instructions is not None:
             self.style_instructions = style_instructions
         else:
@@ -173,9 +176,9 @@ class CAASteering(ActivationSteering):
     
     def get_hidden_cache(
         self,
-        prompts: Dict[str, List[str]],  # e.g. {"train": [...], "eval": [...]}
+        prompts: dict[str, list[str]],  # e.g. {"train": [...], "eval": [...]}
         batch_size: int = 64,
-    ) -> Dict[str, Dict[Union[int, str], torch.Tensor]]:
+    ) -> dict[str, dict[int | str, torch.Tensor]]:
         """
         Get cached hidden activations for multiple named prompt splits.
 
@@ -193,7 +196,7 @@ class CAASteering(ActivationSteering):
                                                             }
         """
         num_layers = self.model.config.num_hidden_layers
-        all_caches: Dict[str, Dict[Union[int, str], torch.Tensor]] = {}
+        all_caches: dict[str, dict[int | str, torch.Tensor]] = {}
 
         with torch.no_grad():
             for split_name, split_prompts in prompts.items():
@@ -222,8 +225,8 @@ class CAASteering(ActivationSteering):
                     
                 for layer in range(num_layers):
                     final_acts[('resid_mid', layer)] = (
-                        final_acts[('resid_pre', layer)] +
-                        final_acts[('attn_out', layer)]
+                        final_acts[('resid_pre', layer)].to(self.device) +
+                        final_acts[('attn_out', layer)].to(self.device)
     )
 
                 all_caches[split_name] = final_acts
@@ -237,7 +240,7 @@ class CAASteering(ActivationSteering):
         layer_idx: int,
         pos: int = -1,
         act_type: str = "resid_pre",
-        prompts: Optional[Dict[str, List[str]]] = None,
+        prompts: dict[str, list[str]] | None = None,
         batch_size: int = 64,
         use_cached: bool = True,
     ) -> torch.Tensor:
@@ -331,9 +334,9 @@ class CAASteering(ActivationSteering):
     def _apply_steering(
         self,
         hidden_states: torch.Tensor,
-        target_labels: List[str],
+        target_labels: list[str],
         steering_strength: float = None,
-        avoid_labels: List[str] | None = None,
+        avoid_labels: list[str] | None = None,
         steps: int = 1,
         step_size_decay: float = 1.0,
     ) -> torch.Tensor:
@@ -377,22 +380,22 @@ class CAASteering(ActivationSteering):
         norm = combined_vector.norm(p=2)
         if norm == 0:
             # Avoid division by zero (no steering)
-            return hidden_states
+            return acts_t
         normalized_vector = combined_vector / norm
-        normalized_vector = normalized_vector.to(dtype = hidden_states.dtype)
+        normalized_vector = normalized_vector.to(dtype = acts_t.dtype)
         # Apply scaled direction
-        return hidden_states + steering_strength * normalized_vector.to(hidden_states.device)
+        return acts_t + steering_strength * normalized_vector.to(acts_t.device)
     
     def _generate_with_steering(
         self,
-        input_prompts: List[str],
+        input_prompts: list[str],
         steering_strength: float,
-        target_labels: List[str],
-        avoid_labels: Optional[List[str]],
-        target_layers: Optional[List[int]],
-        layer_strengths: Dict[int, float],
-        generation_kwargs: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        target_labels: list[str],
+        avoid_labels: list[str] | None,
+        target_layers: list[int] | None,
+        layer_strengths: dict[int, float],
+        generation_kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         
         
@@ -433,14 +436,14 @@ class CAASteering(ActivationSteering):
                 # Apply steering
                 if isinstance(output, tuple):
                     hidden_states = output[0]
-                    rest = output[1:]
+                    # rest = output[1:]
                     steered = self._apply_steering(hidden_states=hidden_states,
                                                    target_labels=target_labels,
                                                    avoid_labels=avoid_labels,
                                                    steering_strength=strength)
                     return (steered,) + output[1:]
                 else:
-                    rest = None
+                    # rest = None
                     return self._apply_steering(hidden_states=output,
                                                 target_labels=target_labels,
                                                 avoid_labels=avoid_labels,
@@ -484,7 +487,7 @@ class CAASteering(ActivationSteering):
             'layer_strengths': layer_strengths
         }
 
-    def _load_task(self, task_name: str) -> Tuple[Any, List[str], List[str]]:
+    def _load_task(self, task_name: str, max_samples: int = None) -> tuple[Any, list[str], list[str]]:
         """
         Load predefined task dataset
 
@@ -495,10 +498,10 @@ class CAASteering(ActivationSteering):
             Tuple[Any, List[str], List[str]]: Tuple of (dataset, unique_labels, eval_prompts)
         """
         self.logger.info(f"Loading Task: {task_name}")
-        dataset, unique_labels, eval_prompts = load_task(task_name)
+        dataset, unique_labels, eval_prompts = load_task(task_name, max_samples)
         return dataset, unique_labels, eval_prompts
     
-    def _make_hooks(self, layers: list) -> Tuple[Dict,List]:
+    def _make_hooks(self, layers: list) -> tuple[dict,list]:
         """
         Creating Hooks for collecting hidden cache
 

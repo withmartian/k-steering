@@ -1,8 +1,8 @@
-import os
-from openai import OpenAI
-from anthropic import Anthropic
 import math
-from typing import Optional
+import os
+
+from anthropic import Anthropic
+from openai import OpenAI
 
 
 def openai_api_call(
@@ -17,7 +17,7 @@ def openai_api_call(
     max_tokens: int = 1024,
     top_logprobs: int = 20,
     seed: int = 0,
-) -> Optional[object]:
+) -> object | None:
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 

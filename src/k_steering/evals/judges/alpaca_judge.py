@@ -1,11 +1,11 @@
-from typing import Dict
-from typing import Dict, List, Optional, Type
+import pandas as pd
 from jinja2 import Template
 from pydantic import BaseModel
-import pandas as pd
-from src.k_steering.evals.judges.base_judge import BaseLLMJudge
-from src.k_steering.utils.constants import ALPACA_JUDGE_SYSTEM_PROMPT
-from src.k_steering.utils.prompt_templates import ALPACA_EVAL_PROMPT_TEMPLATE_STR
+
+from k_steering.data.eval_prompt_templates import ALPACA_EVAL_PROMPT_TEMPLATE_STR
+from k_steering.data.task_constants import ALPACA_JUDGE_SYSTEM_PROMPT
+from k_steering.evals.judges.base_judge import BaseLLMJudge
+
 
 class AlpacaJudge(BaseLLMJudge):
     
@@ -14,7 +14,7 @@ class AlpacaJudge(BaseLLMJudge):
         model_name: str = "gpt-4o-mini"
     ):
         """
-        Initialize Tone Judge class
+        Initialize Alpaca Judge class
         
         Args:
             model_name: Judge Model Name
@@ -29,9 +29,8 @@ class AlpacaJudge(BaseLLMJudge):
         dataset_instruction: str,
         model_output: str,
         dataset_output: str,
-        response_format: Type[BaseModel],
-        target_style: Optional[str] = None,
-    ) -> Dict:
+        response_format: type[BaseModel],
+    ) -> dict:
         """
         Evaluate a single (baseline, steered) pair.
         """
@@ -47,19 +46,19 @@ class AlpacaJudge(BaseLLMJudge):
         )
 
         parsed = self._parse_json_from_llm_output(raw_output)
-        return self._postprocess_result(parsed)
+        return parsed
+    
 
     def evaluate_batch(
         self,
-        model_outputs: List[str],
+        model_outputs: list[str],
         benchmark_dataset: pd.DataFrame,
-        response_format: Type[BaseModel],
-        target_style: Optional[str] = None,
-    ) -> Dict:
+        response_format: type[BaseModel]
+    ) -> dict:
         """
         Evaluate a batch and return aggregate statistics.
         """
-        if len(model_outputs) != len(benchmark_dataset.shape[0]):
+        if len(model_outputs) != benchmark_dataset.shape[0]:
             raise ValueError("Model output and benchmark dataset length must match.")
 
         results = [
@@ -79,7 +78,7 @@ class AlpacaJudge(BaseLLMJudge):
         dataset_instruction: str,
         model_output: str,
         dataset_output: str,
-        target_style: None,
+        target_style: str = None,
     ) -> str:
         template_str = self._select_prompt_template(
             target_style=target_style,
@@ -107,7 +106,7 @@ class AlpacaJudge(BaseLLMJudge):
         dataset_instruction: str,
         model_output: str,
         dataset_output: str,
-    ) -> Dict:
+    ) -> dict:
         """
         Default context builder. Subclasses may extend or override.
         """
@@ -119,7 +118,7 @@ class AlpacaJudge(BaseLLMJudge):
 
         return context
     
-    def _aggregate_results(self, results: List[Dict]) -> Dict:
+    def _aggregate_results(self, results: list[dict]) -> dict:
         """
         Default aggregation logic.
         """

@@ -1,13 +1,13 @@
 
+
 from pydantic import BaseModel
-from typing import Optional
 
 
 class StyleScore(BaseModel):
     avoid_style: str
     avoid_style_score: int
-    target_style: Optional[str]
-    target_style_score: Optional[int]
+    target_style: str | None
+    target_style_score: int | None
     
 class AvoidBool(BaseModel):
     avoid_style: str

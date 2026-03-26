@@ -1,15 +1,17 @@
 from __future__ import annotations
-from typing import List, Optional, Union
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from src.k_steering.steering.config import TrainerConfig
+from k_steering.steering.config import TrainerConfig
 
 
 class MultiLabelSteeringModel(nn.Module):
+    """
+    Class for definining the structure of K-Steering classifier model
+    """
     def __init__(
         self,
         input_dim: int,
@@ -36,6 +38,9 @@ class MultiLabelSteeringModel(nn.Module):
 
 
 class ActivationSteeringTrainer:
+    """
+    Class for training the K-Steering classifier model
+    """
     def __init__(self, trainer_config: TrainerConfig) -> None:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.trainer_config = trainer_config
@@ -72,9 +77,9 @@ class ActivationSteeringTrainer:
 
     def steer_activations(
         self,
-        acts: Union[np.ndarray, torch.Tensor],
-        target_idx: List[int],
-        avoid_idx: List[int] | None = None,
+        acts: np.ndarray | torch.Tensor,
+        target_idx: list[int],
+        avoid_idx: list[int] | None = None,
         *,
         alpha: float = 1.0,
         steps: int = 1,
@@ -104,8 +109,8 @@ class ActivationSteeringTrainer:
     def _compute_steering_loss(self,
         logits: torch.Tensor,
         *,
-        target_idx: List[int] | torch.Tensor,
-        avoid_idx: List[int] | torch.Tensor,
+        target_idx: list[int] | torch.Tensor,
+        avoid_idx: list[int] | torch.Tensor,
     ) -> torch.Tensor:
         if not torch.is_tensor(target_idx):
             target_idx = torch.as_tensor(target_idx, device=logits.device)

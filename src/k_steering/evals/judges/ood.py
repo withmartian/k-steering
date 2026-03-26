@@ -1,12 +1,8 @@
-import json
-from abc import ABC, abstractmethod
-import math
-from typing import Dict, List, Optional, Type
-from jinja2 import Template
-from pydantic import BaseModel
 import asyncio
-from src.k_steering.evals.judges.base_judge import BaseLLMJudge
-from src.k_steering.utils.constants import OOD_JUDGE_SYSTEM_PROMPT
+
+from k_steering.data.task_constants import OOD_JUDGE_SYSTEM_PROMPT
+from k_steering.evals.judges.base_judge import BaseLLMJudge
+
 
 class OODJudge(BaseLLMJudge):
     
@@ -30,7 +26,7 @@ class OODJudge(BaseLLMJudge):
         self,
         generation: str
         
-    ) -> Dict:
+    ) -> dict:
         """
         Evaluate a single (baseline, steered) pair.
         """
@@ -47,8 +43,8 @@ class OODJudge(BaseLLMJudge):
 
     async def evaluate_batch(
         self,
-        generations: List[str]
-    ) -> Dict:
+        generations: list[str]
+    ) -> dict:
         """
         Evaluate a batch and return aggregate statistics.
         """

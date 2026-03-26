@@ -1,13 +1,16 @@
 import json
-from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Type
+
 from jinja2 import Template
 from pydantic import BaseModel
 
-from src.k_steering.utils.io import openai_api_call, anthropic_api_call
-from src.k_steering.utils.prompt_templates import AVOID_AND_TOWARDS_EVALUATION_PROMPT_TEMPLATE_STR, AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR
+from k_steering.data.eval_prompt_templates import (
+    AVOID_AND_TOWARDS_EVALUATION_PROMPT_TEMPLATE_STR,
+    AVOID_ONLY_EVALUATION_PROMPT_TEMPLATE_STR,
+)
+from k_steering.utils.io import anthropic_api_call, openai_api_call
 
-class BaseLLMJudge(ABC):
+
+class BaseLLMJudge:
     """
     Abstract base class for LLM-based judges.
 
@@ -24,18 +27,18 @@ class BaseLLMJudge(ABC):
         self.judge_name = "BaseLLMJudge"
 
         # Must be set by subclasses
-        self.task: Optional[str] = None
-        self.system_prompt: Optional[str] = None
-        self.style_descriptions: Optional[Dict[str, str]] = None
+        self.task: str | None = None
+        self.system_prompt: str | None = None
+        self.style_descriptions: dict[str, str] | None = None
 
     def evaluate_sample(
         self,
         baseline_text: str,
         steered_text: str,
         avoid_style: str,
-        response_format: Type[BaseModel],
-        target_style: Optional[str] = None,
-    ) -> Dict:
+        response_format: type[BaseModel],
+        target_style: str | None = None,
+    ) -> dict:
         """
         Evaluate a single (baseline, steered) pair.
         """
@@ -56,12 +59,12 @@ class BaseLLMJudge(ABC):
 
     def evaluate_batch(
         self,
-        baseline_texts: List[str],
-        steered_texts: List[str],
+        baseline_texts: list[str],
+        steered_texts: list[str],
         avoid_style: str,
-        response_format: Type[BaseModel],
-        target_style: Optional[str] = None,
-    ) -> Dict:
+        response_format: type[BaseModel],
+        target_style: str | None = None,
+    ) -> dict:
         """
         Evaluate a batch and return aggregate statistics.
         """
@@ -86,7 +89,7 @@ class BaseLLMJudge(ABC):
         baseline_text: str,
         steered_text: str,
         avoid_style: str,
-        target_style: Optional[str],
+        target_style: str | None,
     ) -> str:
         template_str = self._select_prompt_template(
             target_style=target_style,
@@ -119,8 +122,8 @@ class BaseLLMJudge(ABC):
         baseline_text: str,
         steered_text: str,
         avoid_style: str,
-        target_style: Optional[str],
-    ) -> Dict:
+        target_style: str | None,
+    ) -> dict:
         """
         Default context builder. Subclasses may extend or override.
         """
@@ -143,7 +146,7 @@ class BaseLLMJudge(ABC):
     def _run_model(
         self,
         prompt: str,
-        response_format: Type[BaseModel]=None,
+        response_format: type[BaseModel]=None,
         max_tokens: int = 1024,
         mode: str = "json"
     ) -> str:
@@ -163,7 +166,7 @@ class BaseLLMJudge(ABC):
             mode = mode
         )
 
-    def _postprocess_result(self, parsed_output: Dict) -> Dict:
+    def _postprocess_result(self, parsed_output: dict) -> dict:
         """
         Convert raw judge JSON into the standardized output for this judge.
         """
@@ -172,7 +175,7 @@ class BaseLLMJudge(ABC):
             "steering_strength": parsed_output["steering_strength"],
         }
 
-    def _aggregate_results(self, results: List[Dict]) -> Dict:
+    def _aggregate_results(self, results: list[dict]) -> dict:
         """
         Default aggregation logic.
         """
@@ -188,7 +191,7 @@ class BaseLLMJudge(ABC):
             "average_strength": total_strength / n,
         }
         
-    def _parse_json_from_llm_output(self, raw_output: str) -> Dict:
+    def _parse_json_from_llm_output(self, raw_output: str) -> dict:
         """
         Assumes model is instructed to return strict JSON.
         Override only if needed.

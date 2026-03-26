@@ -1,13 +1,23 @@
 from __future__ import annotations
 
-from typing import List, Tuple
+import random
 
 from datasets import load_dataset
 
-from .tasks import tones_prompts, debates_prompts
+from k_steering.data.task_prompts import debates_prompts, tones_prompts
 
 
-def load_task(task: str):
+def load_task(task: str, max_samples: int = None) -> tuple[list, list, list]:
+    """
+    Load Predefined Task
+
+    Args:
+        task (str): Task Name
+        max_samples (int, optional): Max Samples to be sampled (Used for lower memory usage). Defaults to None.
+
+    Returns:
+        Tuple[list, list, list]: Tuple of Train Dataset, Unique Labels and Evaluation Prompts
+    """
     if task == "tones":
         ds = load_dataset("Narmeen07/tone_agnostic_questions", split="train")
         steered_prompts = tones_prompts()
@@ -27,8 +37,10 @@ def load_task(task: str):
         eval_prompts = list(ds["text"])
         
         # TODO: Remove max_samples code later
-        max_samples = 10
-        return dataset[:max_samples], unique_labels, eval_prompts[:max_samples]
+        if max_samples:
+            random.seed(42)
+            return random.sample(dataset, max_samples), unique_labels, random.sample(eval_prompts, max_samples)
+        return dataset, unique_labels, eval_prompts
     if task == "debates":
         ds = load_dataset("Narmeen07/debate_style_agnostic_questions", split="train")
         steered_prompts = debates_prompts()
@@ -48,8 +60,10 @@ def load_task(task: str):
         eval_prompts = list(ds["text"])
         
         # TODO: Remove max_samples code later
-        max_samples = 10
-        return dataset[:max_samples], unique_labels, eval_prompts[:max_samples]
+        if max_samples:
+            random.seed(42)
+            return random.sample(dataset, max_samples), unique_labels, random.sample(eval_prompts, max_samples)
+        return dataset, unique_labels, eval_prompts
     raise ValueError(f"Unknown task {task}")
 
 
