@@ -307,6 +307,18 @@ class ActivationSteering(ABC, PushToHubMixin):
             Classifier/steering vectors (subclass-specific)
         """
         pass
+    
+    @abstractmethod
+    def evaluate(
+        self
+    ):
+        """
+        Evaluate the steering method on evaluation prompts
+
+        Returns:
+            Evaluation Summary of the Steering Classifier
+        """
+        pass
 
     @abstractmethod
     def _apply_steering(
@@ -331,7 +343,8 @@ class ActivationSteering(ABC, PushToHubMixin):
         dataset: Any | None = None,
         eval_prompts: list[str] | None = None,
         batch_size: int = 64,
-        max_samples: int = None
+        max_samples: int = None,
+        eval: bool = False
     ) -> "ActivationSteering":
         """
         Fit the steering model on a task or dataset
@@ -385,6 +398,11 @@ class ActivationSteering(ABC, PushToHubMixin):
         self._is_fitted = True
 
         self.logger.info("Training complete!")
+        
+        if eval:
+            self.logger.info("Evaluating Steering Performance on Eval Prompts...")
+            self.evaluate()
+            self.logger.info("Evaluation complete!")
         return self
 
     def _get_prompts_from_dataset(self, dataset: Any) -> list[str]:

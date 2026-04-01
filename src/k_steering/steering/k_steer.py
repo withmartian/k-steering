@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 from typing import Any
-
+import random
 import numpy as np
 import torch
 
@@ -68,17 +68,17 @@ class KSteering(ActivationSteering):
 
         Args:
             cache (dict): Cached hidden states
-            eval (bool): Whether to build evaluation classifier
+            # eval (bool): Whether to build evaluation classifier
 
         Returns:
             Classifier/steering vectors (subclass-specific)
         """
-        if not eval:
-            split_name = "train"
-            layer_idx = self.steering_config.train_layer
-        else:
-            split_name = "eval"
-            layer_idx = self.steering_config.eval_layer
+        # if not eval:
+        split_name = "train"
+        layer_idx = self.steering_config.train_layer
+        # else:
+        #     split_name = "eval"
+        #     layer_idx = self.steering_config.eval_layer
         
         
         
@@ -89,6 +89,91 @@ class KSteering(ActivationSteering):
         self.k_clf = ActivationSteeringTrainer(self.trainer_config)
         
         self.k_clf.fit(X_layer,self.get_one_hot(y_layer, len(self.unique_labels)), epochs=1, batch_size=64)
+        
+    def evaluate(self):
+        
+        split_name = "eval"
+        layer_idx = self.steering_config.eval_layer or -1
+        
+        input_prompts = self.eval_prompts
+        
+        hooks = []
+        
+        def make_hook(layer_idx, target_idx, avoid_idx):
+            def hook(module, input, output):
+                # Get effective strength for this layer
+                strength = self.steering_config.steering_strength
+                
+                # Apply steering
+                if isinstance(output, tuple):
+                    hidden_states = output[0]
+                    rest = output[1:]
+                    steered = self._apply_steering(hidden_states=hidden_states,
+                                                   target_idx=target_idx,
+                                                   avoid_idx=avoid_idx,
+                                                   steering_strength=strength,
+                                                   rest=rest)
+                    return steered
+                else:
+                    rest = None
+                    return self._apply_steering(hidden_states=output,
+                                                target_idx=target_idx,
+                                                avoid_idx=avoid_idx,
+                                                steering_strength=strength,
+                                                rest=rest)
+
+            return hook
+        
+        model_layers = get_transformer_layers(self.model)
+        # Register hooks on target layers
+        random.seed(42)
+        target_labels = random.sample(self.unique_labels,1)
+        target_idx = [self.tone2idx[t] for t in [target_labels]]
+        
+        avoid_idx = None
+            
+        for layer_idx in self.steering_config.eval_layer:
+            if layer_idx < self.model.config.num_hidden_layers:
+                handle = model_layers[layer_idx].register_forward_hook(
+                    make_hook(layer_idx, target_idx, avoid_idx)
+                )
+                hooks.append(handle)
+                
+        # input_prompts = input_prompts[:2]
+        
+        try:
+            # Generate with steering
+            print(f"Tokenizing {len(input_prompts)} examples")
+            inputs = self.tokenizer(input_prompts, return_tensors="pt", padding=True).to(self.device)
+            
+            # with torch.no_grad():
+            outputs = self.model(
+                        **inputs,
+                        output_hidden_states=True,
+                        return_dict=True,
+                    )   
+            
+        finally:
+            # Remove hooks
+            print("Removing Hooks")
+            for handle in hooks:
+                handle.remove()
+        
+        
+        
+        
+        
+        
+                
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
     def get_one_hot(self, indices: np.ndarray, num_classes: int) -> np.ndarray:
         """
