@@ -1,4 +1,10 @@
-# K-Steering
+<div align="center">
+  <img src="./images/github-icon.svg" alt="K-Steering logo" width="140" height="140" />
+  <h1>K-Steering</h1>
+  <p>Non-linear multi-attribute steering for language models.</p>
+</div>
+
+Open-source tooling for training steering classifiers, applying non-linear control at inference time, and comparing against CAA baselines for controlled generation experiments.
 
 ## Table of Contents
 
