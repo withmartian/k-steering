@@ -70,7 +70,7 @@ Get K-Steering running in minutes!!
 
 You can explore K-Steering without any local setup using the Colab notebook below.
 
-[👉 K-Steering Colab Notebook](https://colab.research.google.com/drive/1cj3G_gKZ1OSOwwzxPRGjusazF3MFb-yl#scrollTo=Vbm8dXXtNCeV).
+[👉 K-Steering Colab Notebook](https://colab.research.google.com/drive/1cj3G_gKZ1OSOwwzxPRGjusazF3MFb-yl?usp=sharing).
 
 _(Includes installation, training, and inference examples)_
 
