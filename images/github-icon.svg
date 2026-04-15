@@ -1,0 +1,42 @@
+<svg width="216" height="216" viewBox="0 0 216 216" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="clip0">
+      <rect width="216" height="216" rx="18" fill="white"/>
+    </clipPath>
+    <filter id="grain" x="39" y="129" width="48" height="48" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.95" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.45"/>
+      </feComponentTransfer>
+      <feBlend mode="screen" in2="SourceGraphic" result="shape"/>
+    </filter>
+  </defs>
+
+  <rect width="216" height="216" rx="18" fill="#FF6547"/>
+
+  <g clip-path="url(#clip0)">
+    <path d="M33 29.5H183" stroke="#FFC0B1" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M33 71.5H183" stroke="#FFC0B1" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M33 108H183" stroke="#FFC0B1" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M33 145H183" stroke="#FFC0B1" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M33 183H183" stroke="#FFC0B1" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M34.5 30V184" stroke="#FFC0B1" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M71.5 30V184" stroke="#FFC0B1" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M109 30V184" stroke="#FFC0B1" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M145 30V184" stroke="#FFC0B1" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M182 30V184" stroke="#FFC0B1" stroke-width="1.5" stroke-linecap="round"/>
+
+    <rect x="38" y="32" width="50" height="151" fill="#111111"/>
+
+    <circle cx="63" cy="66" r="16" stroke="#F7EFE8" stroke-width="2" stroke-dasharray="3 4"/>
+    <circle cx="63" cy="108" r="16" stroke="#F7EFE8" stroke-width="2" stroke-dasharray="3 4"/>
+    <g filter="url(#grain)">
+      <circle cx="63" cy="151" r="16" fill="#F3ECE3"/>
+    </g>
+
+    <path d="M144 30L185 71L153 103L185 135L144 185L81 122L112 91L81 60L144 30Z" fill="#FFF8F2"/>
+    <circle cx="144" cy="66" r="15" fill="#FF6547"/>
+    <circle cx="102" cy="108" r="15" fill="#FF6547"/>
+  </g>
+</svg>
